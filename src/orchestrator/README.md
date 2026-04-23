@@ -15,7 +15,7 @@ A step is a discrete unit of work. It takes a context and per-invocation metadat
 The policy is the "brain" of the pipeline. It looks at the outcome of the current step and decides the `transition`. `decide()` may be synchronous or `async`.
 *   **Transition**: Describes *where* to go next (e.g., `next`, `goto`, `retry`, `stop`, `fail`, `degrade`).
 
-### 3. PipelineOrchestrator
+### 3. GuidlioOrchestrator
 The engine that runs the loop. It manages the context, executes steps, consults the policy for transitions, and handles observability.
 
 ---
@@ -75,9 +75,9 @@ class ValidateInputStep extends PipelineStep<MyContext> {
 Assemble steps and optionally a custom policy or observer.
 
 ```typescript
-import { PipelineOrchestrator, LoggerPipelineObserver } from './orchestrator';
+import { GuidlioOrchestrator, LoggerPipelineObserver } from './orchestrator';
 
-const orchestrator = new PipelineOrchestrator<MyContext>({
+const orchestrator = new GuidlioOrchestrator<MyContext>({
   steps: [
     new ValidateInputStep(),
     new FetchDataStep(),
@@ -155,7 +155,7 @@ class RetryPolicy extends DefaultPolicy<MyContext> {
 
 > **Concurrent runs**: pass a factory to `policy` so each run gets its own policy instance:
 > ```typescript
-> new PipelineOrchestrator({ policy: () => new RetryPolicy(), steps: [...] });
+> new GuidlioOrchestrator({ policy: () => new RetryPolicy(), steps: [...] });
 > ```
 > Passing an instance directly is safe for sequential runs only.
 

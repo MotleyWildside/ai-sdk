@@ -16,7 +16,6 @@ registry.register({
 
 	// ── Message templates ─────────────────────
 	systemPrompt: "You are a customer support classifier.",
-	// developer: "..."           // alternate system role (useful for some providers)
 	userPrompt: "Classify this ticket:\n\n{body}\n\nCategories: {categories}",
 
 	// ── Model defaults ────────────────────────
@@ -105,7 +104,7 @@ for (const def of definitions) {
 	registry.register(def);
 }
 
-const llm = new LLMService({ providers: [...], promptRegistry: registry });
+const llm = new GuidlioLMService({ providers: [...], promptRegistry: registry });
 ```
 
 > Note: `PromptDefinition.output.schema` must be a Zod schema instance — it cannot be serialized to JSON. Either register schema-less definitions from file and attach schemas in code, or omit `schema` and pass `jsonSchema` per-call.

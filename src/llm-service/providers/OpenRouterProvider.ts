@@ -54,7 +54,6 @@ export class OpenRouterProvider implements LLMProvider {
     | { role: 'system'; content: string }
     | { role: 'user'; content: string }
     | { role: 'assistant'; content: string }
-    | { role: 'developer'; content: string }
   > {
     return messages.map((msg) => {
       return {

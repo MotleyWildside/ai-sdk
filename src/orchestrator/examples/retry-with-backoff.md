@@ -80,9 +80,9 @@ class ParseResponseStep extends PipelineStep<ApiContext> {
 ## Wiring
 
 ```typescript
-import { PipelineOrchestrator, RetryPolicy } from 'guidlio-lm';
+import { GuidlioOrchestrator, RetryPolicy } from 'guidlio-lm';
 
-const orchestrator = new PipelineOrchestrator<ApiContext>({
+const orchestrator = new GuidlioOrchestrator<ApiContext>({
   steps: [new CallExternalApiStep(), new ParseResponseStep()],
 
   // RetryPolicy options — all optional, shown here with their defaults:

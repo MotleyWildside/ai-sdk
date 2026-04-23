@@ -25,9 +25,9 @@ npm install guidlio-lm
 ### 2. Initialize
 
 ```typescript
-import { LLMService, OpenAIProvider } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider } from "guidlio-lm";
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY)],
 	enableCache: true,
 });
@@ -86,12 +86,12 @@ console.log(result.data.landmark); // Fully typed
 
 ## ⛓️ Pipelines
 
-Build complex multi-step workflows with the `PipelineOrchestrator`:
+Build complex multi-step workflows with the `GuidlioOrchestrator`:
 
 ```typescript
-import { PipelineOrchestrator, ok } from "guidlio-lm";
+import { GuidlioOrchestrator, ok } from "guidlio-lm";
 
-const pipe = new PipelineOrchestrator({
+const pipe = new GuidlioOrchestrator({
 	steps: [
 		{
 			name: "classify",
@@ -113,7 +113,7 @@ const { status, ctx } = await pipe.run({ input: "..." });
 Full control over retries, logging, and custom providers:
 
 ```typescript
-const llm = new LLMService({
+const llm = new GuidlioLMService({
   providers: [...],
   maxRetries: 3,
   logger: new MyCustomLogger(),

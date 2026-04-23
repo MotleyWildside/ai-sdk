@@ -228,9 +228,9 @@ class VerifyStep extends PipelineStep<PlanContext> {
 ## Wiring
 
 ```typescript
-import { PipelineOrchestrator, LoggerPipelineObserver } from 'guidlio-lm';
+import { GuidlioOrchestrator, LoggerPipelineObserver } from 'guidlio-lm';
 
-const orchestrator = new PipelineOrchestrator<PlanContext>({
+const orchestrator = new GuidlioOrchestrator<PlanContext>({
   steps: [
     new PlanStep(),
     new ExecuteStep(),

@@ -1,6 +1,6 @@
 # LLM Service Module
 
-The `LLMService` module is the core gateway for all Large Language Model interactions within the package. It provides a unified interface for text generation, JSON extraction, streaming, and embeddings, regardless of the underlying provider (OpenAI, Gemini, OpenRouter).
+The `GuidlioLMService` module is the core gateway for all Large Language Model interactions within the package. It provides a unified interface for text generation, JSON extraction, streaming, and embeddings, regardless of the underlying provider (OpenAI, Gemini, OpenRouter).
 
 ## Key Features
 
@@ -14,7 +14,7 @@ The `LLMService` module is the core gateway for all Large Language Model interac
 
 ## Core API
 
-### `LLMService`
+### `GuidlioLMService`
 
 | Method | Description |
 | :--- | :--- |
@@ -26,7 +26,7 @@ The `LLMService` module is the core gateway for all Large Language Model interac
 
 All methods accept `traceId?` and `signal?: AbortSignal`.
 
-### `LLMServiceConfig`
+### `GuidlioLMServiceConfig`
 
 | Field | Default | Notes |
 | :--- | :--- | :--- |
@@ -70,10 +70,10 @@ The `PromptRegistry` manages versioned prompt templates with `{variable}` interp
 
 ```typescript
 import { z } from "zod";
-import { LLMService } from "./LLMService";
+import { GuidlioLMService } from "./GuidlioLMService";
 import { OpenAIProvider } from "./providers/OpenAIProvider";
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
 	defaultProvider: "openai",
 	maxAttempts: 4,
@@ -118,7 +118,7 @@ The transient/permanent split is load-bearing for retry behavior. Preserve it wh
 
 ```
 llm-service/
-├── LLMService.ts               Orchestration: public API + shared executors
+├── GuidlioLMService.ts               Orchestration: public API + shared executors
 ├── errors.ts                   Error hierarchy
 ├── types.ts                    Public param/result/config types
 ├── cache/                      CacheProvider interface + in-memory impl

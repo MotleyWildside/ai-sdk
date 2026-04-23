@@ -5,7 +5,7 @@
 ## Basic streaming to stdout
 
 ```typescript
-import { LLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 
 const registry = new PromptRegistry();
 
@@ -17,7 +17,7 @@ registry.register({
 	output: { type: "text" },
 });
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
 	promptRegistry: registry,
 });

@@ -25,7 +25,6 @@ export interface PromptDefinition {
   promptId: string;
   version: string | number;
   systemPrompt?: string;
-  developer?: string;
   userPrompt?: string;
   modelDefaults: PromptModelDefaults;
   output: PromptOutputConfig;

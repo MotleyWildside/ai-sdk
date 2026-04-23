@@ -17,7 +17,7 @@ import type {
 	LLMEmbedResult,
 	LLMEmbedBatchParams,
 	LLMEmbedBatchResult,
-	LLMServiceConfig,
+	GuidlioLMServiceConfig,
 	ProviderRequest,
 } from "./types";
 import type { LLMLogger } from "../logger/types";
@@ -44,16 +44,16 @@ type Messages = ReturnType<PromptRegistry["buildMessages"]>;
 /**
  * Main LLM Gateway Service
  */
-export class LLMService {
+export class GuidlioLMService {
 	private providers: Map<string, LLMProvider> = new Map();
 	private cache: CacheProvider;
 	private promptReg: PromptRegistry;
 	private logger: LLMLogger | null;
 
-	constructor(private config: LLMServiceConfig) {
+	constructor(private config: GuidlioLMServiceConfig) {
 		if (!config.providers || config.providers.length === 0) {
 			throw new Error(
-				"At least one provider must be specified in LLMServiceConfig",
+				"At least one provider must be specified in GuidlioLMServiceConfig",
 			);
 		}
 
@@ -389,7 +389,7 @@ export class LLMService {
 
 		if (!model) {
 			throw new Error(
-				`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or LLMServiceConfig.defaultModel`,
+				`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or GuidlioLMServiceConfig.defaultModel`,
 			);
 		}
 

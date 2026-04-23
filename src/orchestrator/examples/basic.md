@@ -82,9 +82,9 @@ class EnrichContextStep extends PipelineStep<UserContext> {
 ## Wiring
 
 ```typescript
-import { PipelineOrchestrator } from 'guidlio-lm';
+import { GuidlioOrchestrator } from 'guidlio-lm';
 
-const orchestrator = new PipelineOrchestrator<UserContext>({
+const orchestrator = new GuidlioOrchestrator<UserContext>({
   steps: [
     new ValidateUserStep(),
     new FetchProfileStep(),

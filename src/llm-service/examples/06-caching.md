@@ -15,9 +15,9 @@ Cache is only written when `ttlSeconds` is also set. Without a TTL the entry nev
 ## Basic read-through
 
 ```typescript
-import { LLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
 	promptRegistry: registry,
 });
@@ -69,7 +69,7 @@ await llm.callText({
 Set `enableCache: false` in the service config to disable reads and writes regardless of per-call `cache` params. Useful in test environments.
 
 ```typescript
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [...],
 	enableCache: false,
 	promptRegistry: registry,
@@ -106,7 +106,7 @@ class RedisCacheProvider implements CacheProvider {
 	}
 }
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [...],
 	cacheProvider: new RedisCacheProvider(),
 	promptRegistry: registry,

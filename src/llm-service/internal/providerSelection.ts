@@ -1,5 +1,5 @@
 import type { LLMProvider } from "../providers/types";
-import type { LLMServiceConfig } from "../types";
+import type { GuidlioLMServiceConfig } from "../types";
 import type { LLMLogger } from "../../logger/types";
 
 /**
@@ -16,7 +16,7 @@ import type { LLMLogger } from "../../logger/types";
 export function selectProvider(
 	providers: Map<string, LLMProvider>,
 	model: string,
-	config: LLMServiceConfig,
+	config: GuidlioLMServiceConfig,
 	logger: LLMLogger | null,
 ): LLMProvider {
 	if (config.defaultProvider) {

@@ -6,13 +6,13 @@ Register providers once; the service selects one per-call based on model-name pr
 
 ```typescript
 import {
-	LLMService,
+	GuidlioLMService,
 	OpenAIProvider,
 	GeminiProvider,
 	OpenRouterProvider,
 } from "guidlio-lm";
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [
 		new OpenAIProvider(process.env.OPENAI_API_KEY!),
 		new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -35,7 +35,7 @@ await llm.callText({ promptId: "p", model: "anthropic/claude-3-5-sonnet", variab
 `defaultProvider` bypasses model-prefix matching entirely — every call goes to the named provider.
 
 ```typescript
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [
 		new OpenAIProvider(process.env.OPENAI_API_KEY!),
 		new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -49,7 +49,7 @@ const llm = new LLMService({
 By default, if no provider's `supportsModel` matches, the service falls back to the first registered provider and logs a warning. Enable `strictProviderSelection` to throw instead — recommended in production to surface misconfigurations early.
 
 ```typescript
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
 	strictProviderSelection: true,
 });
@@ -63,7 +63,7 @@ await llm.callText({ promptId: "p", model: "gemini-2.0-flash", variables: {} });
 Only `LLMTransientError` (429s, 5xx, timeouts) is retried. All other errors propagate immediately.
 
 ```typescript
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [...],
 	maxAttempts: 5,            // 1 original + 4 retries (default: 3)
 	retryBaseDelayMs: 500,     // base for exponential backoff (default: 1000 ms)
@@ -140,7 +140,7 @@ Inject any `LLMLogger`-compatible logger. Every call emits a structured `llmCall
 ```typescript
 import { ConsoleLogger } from "guidlio-lm";
 
-const llm = new LLMService({
+const llm = new GuidlioLMService({
 	providers: [...],
 	logger: new ConsoleLogger(),
 	promptRegistry: registry,

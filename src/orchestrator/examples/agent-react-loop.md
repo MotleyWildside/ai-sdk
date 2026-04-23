@@ -185,9 +185,9 @@ class AnswerStep extends PipelineStep<AgentContext> {
 ## Wiring
 
 ```typescript
-import { PipelineOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from 'guidlio-lm';
+import { GuidlioOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from 'guidlio-lm';
 
-const orchestrator = new PipelineOrchestrator<AgentContext>({
+const orchestrator = new GuidlioOrchestrator<AgentContext>({
   steps: [
     new ThinkStep(),
     new ActStep(),

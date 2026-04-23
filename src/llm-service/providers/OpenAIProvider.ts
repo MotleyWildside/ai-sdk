@@ -47,12 +47,8 @@ export class OpenAIProvider implements LLMProvider {
     messages: LLMProviderRequest['messages']
   ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     return messages.map((msg) => {
-      // OpenAI doesn't support 'developer' role, map it to 'system'
-      if (msg.role === 'developer') {
-        return { role: 'system', content: msg.content };
-      }
       return {
-        role: msg.role as 'system' | 'user' | 'assistant',
+        role: msg.role,
         content: msg.content,
       };
     });

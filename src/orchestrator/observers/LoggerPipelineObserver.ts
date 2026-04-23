@@ -4,7 +4,7 @@ import { logger } from '../../logger/logger';
 
 /**
  * Structured-logging observer backed by the package logger.
- * Pass an instance explicitly: `new PipelineOrchestrator({ observer: new LoggerPipelineObserver() })`.
+ * Pass an instance explicitly: `new GuidlioOrchestrator({ observer: new LoggerPipelineObserver() })`.
  */
 export class LoggerPipelineObserver implements PipelineObserver {
 	onRunStart(params: { traceId: string }): void {

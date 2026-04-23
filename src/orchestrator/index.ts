@@ -7,7 +7,7 @@
  * @see README.md for usage examples
  */
 
-export { PipelineOrchestrator } from "./PipelineOrchestrator";
+export { GuidlioOrchestrator } from "./GuidlioOrchestrator";
 
 export type {
 	StepResult,
@@ -23,7 +23,7 @@ export type {
 	ContextAdjustment,
 	PipelineRunResult,
 	PipelineStatus,
-	PipelineOrchestratorConfig,
+	GuidlioOrchestratorConfig,
 	PipelineRunOptions,
 	BaseContext,
 	OkArgs,

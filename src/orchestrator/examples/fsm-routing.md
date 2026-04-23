@@ -125,9 +125,9 @@ class FinalizeStep extends PipelineStep<ModerationContext> {
 ## Wiring
 
 ```typescript
-import { PipelineOrchestrator, RedirectRoutingPolicy } from 'guidlio-lm';
+import { GuidlioOrchestrator, RedirectRoutingPolicy } from 'guidlio-lm';
 
-const orchestrator = new PipelineOrchestrator<ModerationContext>({
+const orchestrator = new GuidlioOrchestrator<ModerationContext>({
   steps: [
     new ClassifyStep(),
     // All possible routing targets must be registered even though only one

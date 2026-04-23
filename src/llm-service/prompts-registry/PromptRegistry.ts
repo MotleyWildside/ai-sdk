@@ -56,14 +56,6 @@ export class PromptRegistry {
       });
     }
 
-    // Add developer message if present (treated as system message)
-    if (prompt.developer) {
-      messages.push({
-        role: 'system',
-        content: this.interpolate(prompt.developer, variables),
-      });
-    }
-
     // Add user message if present
     if (prompt.userPrompt) {
       messages.push({

@@ -2,7 +2,7 @@
  * Normalized request format for LLM providers
  */
 export interface LLMMessage {
-  role: 'system' | 'developer' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant';
   content: string;
 }
 

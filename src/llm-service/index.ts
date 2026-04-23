@@ -1,4 +1,4 @@
-export { LLMService } from "./LLMService";
+export { GuidlioLMService } from "./GuidlioLMService";
 export * from "./types";
 export * from "./errors";
 export * from "./cache/types";

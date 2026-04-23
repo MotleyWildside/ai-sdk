@@ -45,7 +45,7 @@ export class GeminiProvider implements LLMProvider {
     const contents: Content[] = [];
 
     for (const msg of messages) {
-      if (msg.role === 'system' || msg.role === 'developer') {
+      if (msg.role === 'system') {
         systemInstruction += (systemInstruction ? '\n' : '') + msg.content;
       } else {
         contents.push({
