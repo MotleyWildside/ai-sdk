@@ -20,9 +20,9 @@ describe("Public API surface", () => {
 		expect(typeof api.InMemoryCacheProvider).toBe("function");
 	});
 
-	it("API-05: GuidlioOrchestrator, PipelineStep, DefaultPolicy are classes", () => {
+	it("API-05: GuidlioOrchestrator, BasePipelineStep, DefaultPolicy are classes", () => {
 		expect(typeof api.GuidlioOrchestrator).toBe("function");
-		expect(typeof api.PipelineStep).toBe("function");
+		expect(typeof api.BasePipelineStep).toBe("function");
 		expect(typeof api.DefaultPolicy).toBe("function");
 	});
 

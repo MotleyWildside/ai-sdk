@@ -51,17 +51,19 @@ describe("GuidlioLMService — Caching", () => {
 		expect(cache.set).toHaveBeenCalledOnce();
 	});
 
-	it("CA-05: read_through without ttlSeconds — get called, set skipped on miss", async () => {
+	it("CA-05: read_through without ttlSeconds — get called, set called with undefined TTL (no expiry)", async () => {
 		const { svc, cache } = makeSetup({ get: async () => null });
 		await svc.callText({ promptId: "p1", cache: { mode: "read_through" } });
 		expect(cache.get).toHaveBeenCalledOnce();
-		expect(cache.set).not.toHaveBeenCalled();
+		expect(cache.set).toHaveBeenCalledOnce();
+		expect(cache.set).toHaveBeenCalledWith(expect.any(String), expect.anything(), undefined);
 	});
 
-	it("CA-06: refresh without ttlSeconds — set skipped", async () => {
+	it("CA-06: refresh without ttlSeconds — set called with undefined TTL (no expiry)", async () => {
 		const { svc, cache } = makeSetup();
 		await svc.callText({ promptId: "p1", cache: { mode: "refresh" } });
-		expect(cache.set).not.toHaveBeenCalled();
+		expect(cache.set).toHaveBeenCalledOnce();
+		expect(cache.set).toHaveBeenCalledWith(expect.any(String), expect.anything(), undefined);
 	});
 
 	it("CA-07: enableCache:false disables both read and write even when params.cache set", async () => {
@@ -82,10 +84,11 @@ describe("GuidlioLMService — Caching", () => {
 		expect(cache.set).not.toHaveBeenCalled();
 	});
 
-	it("CA-09: ttlSeconds:0 treated as falsy — no write (footgun for 0-second caching)", async () => {
+	it("CA-09: ttlSeconds:0 — write is called; InMemoryCacheProvider treats 0 as no-TTL (indefinite)", async () => {
 		const { svc, cache } = makeSetup({ get: async () => null });
 		await svc.callText({ promptId: "p1", cache: { mode: "read_through", ttlSeconds: 0 } });
-		expect(cache.set).not.toHaveBeenCalled();
+		expect(cache.set).toHaveBeenCalledOnce();
+		expect(cache.set).toHaveBeenCalledWith(expect.any(String), expect.anything(), 0);
 	});
 
 	it("CA-10: same call twice produces same cache key (same key passed to cache.get)", async () => {

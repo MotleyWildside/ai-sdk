@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed } from "../../src/orchestrator/statusHelpers";
 import { NoopPipelineObserver } from "../../src/orchestrator/observers/NoopPipelineObserver";
 import { makeMockObserver } from "../fixtures/mockObserver";

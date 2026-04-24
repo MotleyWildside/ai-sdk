@@ -42,23 +42,21 @@ describe("GuidlioLMService — callStream", () => {
 		expect(collected[1].delta).toBe("llo");
 	});
 
-	it("S-02: cache param provided — logger warns and provider is still called", async () => {
+	it("S-02: callStream completes without warnings — cache/idempotencyKey excluded at type level", async () => {
+		// `cache` and `idempotencyKey` are intentionally absent from LLMStreamParams.
+		// This test confirms the call still reaches the provider without any warnings.
 		const { svc, log, provider } = makeStreamService([{ text: "x", delta: "x" }]);
-		await svc.callStream({ promptId: "p1", cache: { mode: "read_through", ttlSeconds: 60 } });
-		expect(log.warn).toHaveBeenCalled();
+		const result = await svc.callStream({ promptId: "p1" });
+		// consume stream
+		for await (const _ of result.stream) { /* noop */ }
+		expect(log.warn).not.toHaveBeenCalled();
 		expect(provider.callStream).toHaveBeenCalledOnce();
-	});
-
-	it("S-03: idempotencyKey provided — logger warns", async () => {
-		const { svc, log } = makeStreamService([{ text: "x", delta: "x" }]);
-		await svc.callStream({ promptId: "p1", idempotencyKey: "key123" });
-		expect(log.warn).toHaveBeenCalled();
 	});
 
 	it("S-04: provider throws LLMTransientError — propagates immediately without retry", async () => {
 		const provider = makeMockProvider({
 			streamImpl: async () => {
-				throw new LLMTransientError("timeout", "mock", "mock-model");
+				throw new LLMTransientError({ message: "timeout", provider: "mock", model: "mock-model" });
 			},
 		});
 		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3 });

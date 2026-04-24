@@ -1,10 +1,5 @@
-import { DefaultPolicy } from './DefaultPolicy';
-import type {
-	BaseContext,
-	StepOutcomeFailed,
-	PolicyDecisionInput,
-	Transition,
-} from '../types';
+import { DefaultPolicy } from "./DefaultPolicy";
+import type { BaseContext, StepOutcomeFailed, PolicyDecisionInput, Transition } from "../types";
 
 export type RetryPolicyOptions = {
 	/**
@@ -47,7 +42,10 @@ const defaultBackoff = (attempt: number) => Math.min(100 * 2 ** (attempt - 1), 3
  */
 export class RetryPolicy<C extends BaseContext> extends DefaultPolicy<C> {
 	private readonly maxAttempts: number;
-	private readonly retryIf: (outcome: StepOutcomeFailed, input: PolicyDecisionInput<BaseContext>) => boolean;
+	private readonly retryIf: (
+		outcome: StepOutcomeFailed,
+		input: PolicyDecisionInput<BaseContext>,
+	) => boolean;
 	private readonly backoffMs: (attempt: number) => number;
 	private readonly attemptCounts = new Map<string, number>();
 
@@ -68,7 +66,7 @@ export class RetryPolicy<C extends BaseContext> extends DefaultPolicy<C> {
 		if (attempts + 1 < this.maxAttempts) {
 			this.attemptCounts.set(input.stepName, attempts + 1);
 			return {
-				type: 'retry',
+				type: "retry",
 				delayMs: this.backoffMs(attempts + 1),
 			};
 		}

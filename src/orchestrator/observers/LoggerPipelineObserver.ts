@@ -1,6 +1,6 @@
-import type { StepOutcome, PipelineStatus, Transition } from '../types';
-import type { PipelineObserver } from './PipelineObserver';
-import { logger } from '../../logger/logger';
+import type { StepOutcome, PipelineStatus, Transition } from "../types";
+import type { PipelineObserver } from "./PipelineObserver";
+import { logger } from "../../logger/logger";
 
 /**
  * Structured-logging observer backed by the package logger.
@@ -8,12 +8,12 @@ import { logger } from '../../logger/logger';
  */
 export class LoggerPipelineObserver implements PipelineObserver {
 	onRunStart(params: { traceId: string }): void {
-		logger.pipelineEvent({ event: 'Pipeline started', traceId: params.traceId });
+		logger.pipelineEvent({ event: "Pipeline started", traceId: params.traceId });
 	}
 
 	onStepStart(params: { traceId: string; stepName: string }): void {
 		logger.pipelineEvent({
-			event: 'Step started',
+			event: "Step started",
 			traceId: params.traceId,
 			stepName: params.stepName,
 		});
@@ -26,7 +26,7 @@ export class LoggerPipelineObserver implements PipelineObserver {
 		durationMs: number;
 	}): void {
 		logger.pipelineEvent({
-			event: 'Step finished',
+			event: "Step finished",
 			traceId: params.traceId,
 			stepName: params.stepName,
 			outcome: params.outcome.type,
@@ -36,7 +36,7 @@ export class LoggerPipelineObserver implements PipelineObserver {
 
 	onRunFinish(params: { traceId: string; outcome: PipelineStatus; durationMs: number }): void {
 		logger.pipelineEvent({
-			event: 'Pipeline finished',
+			event: "Pipeline finished",
 			traceId: params.traceId,
 			outcome: params.outcome,
 			durationMs: params.durationMs,
@@ -45,7 +45,7 @@ export class LoggerPipelineObserver implements PipelineObserver {
 
 	onError(params: { traceId: string; stepName?: string; error: Error }): void {
 		logger.pipelineEvent({
-			event: 'Pipeline error',
+			event: "Pipeline error",
 			traceId: params.traceId,
 			stepName: params.stepName,
 			error: params.error,

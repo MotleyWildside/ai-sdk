@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed, redirect } from "../../src/orchestrator/statusHelpers";
 import { RedirectRoutingPolicy } from "../../src/orchestrator/policies/RedirectRoutingPolicy";
 import { RetryPolicy } from "../../src/orchestrator/policies/RetryPolicy";

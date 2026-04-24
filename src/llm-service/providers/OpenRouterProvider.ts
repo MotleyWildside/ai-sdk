@@ -1,253 +1,249 @@
-import { OpenRouter } from '@openrouter/sdk';
-import { LLMError, LLMTransientError, LLMPermanentError } from '../errors';
+import { OpenRouter } from "@openrouter/sdk";
+import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
 import type {
-  LLMProvider,
-  LLMProviderRequest,
-  LLMProviderResponse,
-  LLMProviderStreamResponse,
-  LLMProviderEmbedRequest,
-  LLMProviderEmbedResponse,
-  LLMProviderEmbedBatchRequest,
-  LLMProviderEmbedBatchResponse,
-} from './types';
-import type { ChatResponse } from '@openrouter/sdk/models';
+	LLMProvider,
+	LLMProviderRequest,
+	LLMProviderResponse,
+	LLMProviderStreamResponse,
+	LLMProviderEmbedRequest,
+	LLMProviderEmbedResponse,
+	LLMProviderEmbedBatchRequest,
+	LLMProviderEmbedBatchResponse,
+} from "./types";
+import type { ChatResponse } from "@openrouter/sdk/models";
+
+interface OpenRouterErrorLike {
+	name: "OpenRouterError";
+	message: string;
+	statusCode?: number;
+}
+
+function isOpenRouterError(e: unknown): e is OpenRouterErrorLike {
+	return (
+		typeof e === "object" &&
+		e !== null &&
+		"name" in e &&
+		(e as { name: unknown }).name === "OpenRouterError"
+	);
+}
 
 /**
  * OpenRouter provider adapter
  */
 export class OpenRouterProvider implements LLMProvider {
-  readonly name = 'openrouter';
+	readonly name = "openrouter";
 
-  /**
-   * OpenRouter model prefixes that this provider supports
-   */
-  private readonly supportedModelPrefixes = [
-    'anthropic/', // Claude models
-    'google/', // Gemini models
-    'meta-llama/', // Llama models
-    'mistralai/', // Mistral models
-    'openai/', // OpenAI via OpenRouter
-    'deepseek/', // DeepSeek models
-    'cohere/', // Cohere models
-    'qwen/', // Qwen models
-  ];
+	/**
+	 * OpenRouter model prefixes that this provider supports
+	 */
+	private readonly supportedModelPrefixes = [
+		"anthropic/",
+		"google/",
+		"meta-llama/",
+		"mistralai/",
+		"openai/",
+		"deepseek/",
+		"cohere/",
+		"qwen/",
+		"x-ai/",
+		"microsoft/",
+		"amazon/",
+		"perplexity/",
+		"nvidia/",
+		"01-ai/",
+	];
 
-  private client: OpenRouter | null = null;
+	private client: OpenRouter | null = null;
 
-  constructor(private apiKey: string) {}
+	constructor(private apiKey: string) {}
 
-  private getClient(): OpenRouter {
-    if (!this.client) {
-      this.client = new OpenRouter({
-        apiKey: this.apiKey,
-      });
-    }
-    return this.client;
-  }
+	private getClient(): OpenRouter {
+		if (!this.client) {
+			this.client = new OpenRouter({
+				apiKey: this.apiKey,
+			});
+		}
+		return this.client;
+	}
 
-  /**
-   * Convert normalized request to OpenRouter message format
-   */
-  private normalizeMessages(
-    messages: LLMProviderRequest['messages']
-  ): Array<
-    | { role: 'system'; content: string }
-    | { role: 'user'; content: string }
-    | { role: 'assistant'; content: string }
-  > {
-    return messages.map((msg) => {
-      return {
-        role: msg.role,
-        content: msg.content,
-      };
-    });
-  }
+	/**
+	 * Convert normalized request to OpenRouter message format
+	 */
+	private normalizeMessages(
+		messages: LLMProviderRequest["messages"],
+	): Array<
+		| { role: "system"; content: string }
+		| { role: "user"; content: string }
+		| { role: "assistant"; content: string }
+	> {
+		return messages.map((msg) => {
+			return {
+				role: msg.role,
+				content: msg.content,
+			};
+		});
+	}
 
-  /**
-   * Call OpenRouter API with streaming response
-   */
-  async callStream(
-    request: LLMProviderRequest
-  ): Promise<LLMProviderStreamResponse> {
-    try {
-      const client = this.getClient();
+	/**
+	 * Call OpenRouter API with streaming response
+	 */
+	async callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse> {
+		try {
+			const client = this.getClient();
 
-      const chatParams: Parameters<typeof client.chat.send>[0] = {
-        chatGenerationParams: {
-          model: request.model,
-          messages: this.normalizeMessages(request.messages),
-          temperature: request.temperature,
-          maxTokens: request.maxTokens,
-          topP: request.topP,
-          seed: request.seed,
-          stream: true,
-        },
-      };
+			const chatParams: Parameters<typeof client.chat.send>[0] = {
+				chatGenerationParams: {
+					model: request.model,
+					messages: this.normalizeMessages(request.messages),
+					temperature: request.temperature,
+					maxTokens: request.maxTokens,
+					topP: request.topP,
+					seed: request.seed,
+					stream: true,
+				},
+			};
 
-      if (request.responseFormat === 'json') {
-        chatParams.chatGenerationParams.responseFormat = {
-          type: 'json_object',
-        };
-      }
+			if (request.responseFormat === "json") {
+				chatParams.chatGenerationParams.responseFormat = {
+					type: "json_object",
+				};
+			}
 
-      const stream = await client.chat.send(chatParams, {
-        signal: request.signal,
-      });
+			const stream = await client.chat.send(chatParams, {
+				signal: request.signal,
+			});
 
-      return {
-        stream: (async function* () {
-          let fullText = '';
-          const asyncStream = stream as AsyncIterable<{
-            choices: Array<{ delta?: { content?: string } }>;
-          }>;
-          for await (const part of asyncStream) {
-            const delta = part.choices[0]?.delta?.content || '';
-            fullText += delta;
-            yield { text: fullText, delta };
-          }
-        })(),
-      };
-    } catch (error) {
-      throw this.wrapError(error, request.model);
-    }
-  }
+			const wrapError = (e: unknown) => this.wrapError(e, request.model);
+			return {
+				stream: (async function* () {
+					let fullText = "";
+					try {
+						const asyncStream = stream as AsyncIterable<{
+							choices: Array<{ delta?: { content?: string } }>;
+						}>;
+						for await (const part of asyncStream) {
+							const delta = part.choices[0]?.delta?.content || "";
+							fullText += delta;
+							yield { text: fullText, delta };
+						}
+					} catch (error) {
+						throw wrapError(error);
+					}
+				})(),
+			};
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-  private wrapError(error: unknown, model: string): Error {
-    if (error && typeof error === 'object' && 'name' in error && error.name === 'OpenRouterError') {
-      const err = error as any;
-      const statusCode = err.statusCode || 500;
-      const isTransient =
-        statusCode === 429 ||
-        statusCode === 408 ||
-        statusCode === 502 ||
-        statusCode === 503 ||
-        statusCode >= 500;
+	private wrapError(error: unknown, model: string): Error {
+		if (isOpenRouterError(error)) {
+			const statusCode = error.statusCode ?? 500;
+			const isTransient =
+				statusCode === 429 ||
+				statusCode === 408 ||
+				statusCode === 502 ||
+				statusCode === 503 ||
+				statusCode >= 500;
+			const opts = {
+				message: `OpenRouter API error: ${error.message}`,
+				provider: "openrouter",
+				model,
+				statusCode,
+				cause: new Error(error.message),
+			};
+			return isTransient ? new LLMTransientError(opts) : new LLMPermanentError(opts);
+		}
 
-      if (isTransient) {
-        return new LLMTransientError(
-          `OpenRouter API error: ${err.message}`,
-          'openrouter',
-          model,
-          undefined,
-          undefined,
-          statusCode,
-          err
-        );
-      } else {
-        return new LLMPermanentError(
-          `OpenRouter API error: ${err.message}`,
-          'openrouter',
-          model,
-          undefined,
-          undefined,
-          statusCode,
-          err
-        );
-      }
-    }
+		if (error instanceof LLMError) return error;
 
-    if (error instanceof LLMError) {
-      return error;
-    }
+		return new LLMError({
+			message: error instanceof Error ? error.message : "Unknown error",
+			provider: "openrouter",
+			model,
+			cause: error instanceof Error ? error : new Error(String(error)),
+		});
+	}
 
-    return new LLMError(
-      error instanceof Error ? error.message : 'Unknown error',
-      'openrouter',
-      model,
-      undefined,
-      undefined,
-      undefined,
-      error instanceof Error ? error : new Error(String(error))
-    );
-  }
+	/**
+	 * Call OpenRouter API with normalized request
+	 */
+	async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
+		try {
+			const client = this.getClient();
 
-  /**
-   * Call OpenRouter API with normalized request
-   */
-  async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
-    try {
-      const client = this.getClient();
+			const chatParams: Parameters<typeof client.chat.send>[0] = {
+				chatGenerationParams: {
+					model: request.model,
+					messages: this.normalizeMessages(request.messages),
+					temperature: request.temperature,
+					maxTokens: request.maxTokens,
+					topP: request.topP,
+					seed: request.seed,
+					stream: false,
+				},
+			};
 
-      const chatParams: Parameters<typeof client.chat.send>[0] = {
-        chatGenerationParams: {
-          model: request.model,
-          messages: this.normalizeMessages(request.messages),
-          temperature: request.temperature,
-          maxTokens: request.maxTokens,
-          topP: request.topP,
-          seed: request.seed,
-          stream: false,
-        },
-      };
+			if (request.responseFormat === "json") {
+				chatParams.chatGenerationParams.responseFormat = {
+					type: "json_object",
+				};
+			}
 
-      if (request.responseFormat === 'json') {
-        chatParams.chatGenerationParams.responseFormat = {
-          type: 'json_object',
-        };
-      }
+			const completion = (await client.chat.send(chatParams, {
+				signal: request.signal,
+			})) as ChatResponse;
 
-      const completion = (await client.chat.send(chatParams, {
-        signal: request.signal,
-      })) as ChatResponse;
+			const choice = completion.choices[0];
+			const message = choice?.message;
 
-      const choice = completion.choices[0];
-      const message = choice?.message;
+			const content = typeof message?.content === "string" ? message.content : null;
 
-      const content =
-        typeof message?.content === 'string' ? message.content : null;
+			if (!content) {
+				throw new LLMError({
+					message: "No response content from OpenRouter",
+					provider: "openrouter",
+					model: request.model,
+					requestId: completion.id,
+				});
+			}
 
-      if (!content) {
-        throw new LLMError(
-          'No response content from OpenRouter',
-          'openrouter',
-          request.model,
-          undefined,
-          completion.id
-        );
-      }
+			return {
+				text: content,
+				raw: completion,
+				usage: completion.usage
+					? {
+							promptTokens: completion.usage.promptTokens,
+							completionTokens: completion.usage.completionTokens,
+							totalTokens: completion.usage.totalTokens,
+						}
+					: undefined,
+				finishReason: choice?.finishReason ?? undefined,
+				requestId: completion.id,
+			};
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-      return {
-        text: content,
-        raw: completion,
-        usage: completion.usage
-          ? {
-              promptTokens: completion.usage.promptTokens,
-              completionTokens: completion.usage.completionTokens,
-              totalTokens: completion.usage.totalTokens,
-            }
-          : undefined,
-        finishReason: choice?.finishReason ?? undefined,
-        requestId: completion.id,
-      };
-    } catch (error) {
-      throw this.wrapError(error, request.model);
-    }
-  }
+	/**
+	 * Generate vector embedding for text (not supported)
+	 */
+	async embed(_request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> {
+		throw new Error("Embeddings are not supported by OpenRouter provider");
+	}
 
-  /**
-   * Generate vector embedding for text (not supported)
-   */
-  async embed(
-    _request: LLMProviderEmbedRequest
-  ): Promise<LLMProviderEmbedResponse> {
-    throw new Error('Embeddings are not supported by OpenRouter provider');
-  }
+	/**
+	 * Generate vector embeddings for multiple texts (not supported)
+	 */
+	async embedBatch(_request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> {
+		throw new Error("Embeddings are not supported by OpenRouter provider");
+	}
 
-  /**
-   * Generate vector embeddings for multiple texts (not supported)
-   */
-  async embedBatch(
-    _request: LLMProviderEmbedBatchRequest
-  ): Promise<LLMProviderEmbedBatchResponse> {
-    throw new Error('Embeddings are not supported by OpenRouter provider');
-  }
-
-  /**
-   * Check if this provider supports a given model
-   */
-  supportsModel(model: string): boolean {
-    return this.supportedModelPrefixes.some((prefix) =>
-      model.toLowerCase().startsWith(prefix)
-    );
-  }
+	/**
+	 * Check if this provider supports a given model
+	 */
+	supportsModel(model: string): boolean {
+		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
+	}
 }

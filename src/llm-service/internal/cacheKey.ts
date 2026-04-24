@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createHash } from "crypto";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import type { LLMTextParams, LLMJsonParams } from "../types";
 
 /**
@@ -14,9 +15,7 @@ export function buildCacheKey(
 	resolvedModel: string,
 ): string {
 	const hasSchema = (params as LLMJsonParams).jsonSchema !== undefined;
-	const schemaFingerprint = fingerprintSchema(
-		(params as LLMJsonParams).jsonSchema,
-	);
+	const schemaFingerprint = fingerprintSchema((params as LLMJsonParams).jsonSchema);
 
 	const keyParts = [
 		params.idempotencyKey ?? "",
@@ -35,15 +34,12 @@ export function buildCacheKey(
 	return createHash("sha256").update(keyParts.join("|")).digest("hex");
 }
 
-/**
- * Stable-ish fingerprint for a Zod schema to discriminate cache keys.
- * Zod schemas don't serialize cleanly, so we hash the best available shape.
- */
 function fingerprintSchema(schema: z.ZodSchema | undefined): string {
 	if (!schema) return "";
 	try {
+		const jsonSchema = zodToJsonSchema(schema);
 		return createHash("sha256")
-			.update(JSON.stringify(schema._def ?? {}))
+			.update(JSON.stringify(jsonSchema))
 			.digest("hex")
 			.slice(0, 16);
 	} catch {

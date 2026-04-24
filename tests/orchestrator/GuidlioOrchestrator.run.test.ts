@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok } from "../../src/orchestrator/statusHelpers";
 import { PIPELINE_STATUS } from "../../src/orchestrator/constants";
 import { makeMockObserver } from "../fixtures/mockObserver";

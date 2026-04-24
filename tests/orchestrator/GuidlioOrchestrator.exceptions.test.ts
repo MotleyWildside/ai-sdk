@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed } from "../../src/orchestrator/statusHelpers";
 import { RetryPolicy } from "../../src/orchestrator/policies/RetryPolicy";
 import { PipelineDefinitionError, StepExecutionError } from "../../src/orchestrator/errors";

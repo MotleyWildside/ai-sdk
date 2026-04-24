@@ -91,7 +91,7 @@ describe("GuidlioLMService — Multi-provider scenarios", () => {
 			supports: (m) => m.startsWith("model-a-"),
 			callImpl: async () => {
 				aAttempts++;
-				if (aAttempts < 2) throw new LLMTransientError("rate limit", "providerA", "model-a-v1");
+				if (aAttempts < 2) throw new LLMTransientError({ message: "rate limit", provider: "providerA", model: "model-a-v1" });
 				return { text: "ok", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" };
 			},
 		});

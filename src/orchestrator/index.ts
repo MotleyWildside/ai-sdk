@@ -30,7 +30,8 @@ export type {
 	FailedArgs,
 	RedirectArgs,
 } from "./types";
-export { PipelineStep } from "./types";
+export type { PipelineStep } from "./types";
+export { BasePipelineStep } from "./types";
 
 export { RetryPolicy, RedirectRoutingPolicy, DefaultPolicy } from "./policies";
 export type { RetryPolicyOptions, RouteMap } from "./policies";

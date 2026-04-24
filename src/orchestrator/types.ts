@@ -1,6 +1,6 @@
-import { PipelineError } from './errors';
-import type { PipelineObserver } from './observers';
-import { PIPELINE_STATUS } from './constants';
+import { PipelineError } from "./errors";
+import type { PipelineObserver } from "./observers";
+import { PIPELINE_STATUS } from "./constants";
 
 export interface BaseContext {
 	input?: unknown;
@@ -23,15 +23,15 @@ export type StepRunMeta = {
  */
 export type StepOutcome = StepOutcomeOk | StepOutcomeFailed | StepOutcomeRedirect;
 
-export type StepOutcomeOk = { type: 'ok' };
+export type StepOutcomeOk = { type: "ok" };
 export type StepOutcomeFailed = {
-	type: 'failed';
+	type: "failed";
 	error: Error;
 	retryable?: boolean;
 	statusCode?: number;
 };
 export type StepOutcomeRedirect = {
-	type: 'redirect';
+	type: "redirect";
 	message?: string;
 };
 
@@ -45,12 +45,12 @@ export type StepResult<C extends BaseContext> = {
  * Determines WHERE the executor should go next.
  */
 export type Transition =
-	| { type: 'next' }
-	| { type: 'goto'; stepName: string }
-	| { type: 'retry'; stepName?: string; delayMs?: number }
-	| { type: 'stop' }
-	| { type: 'fail'; error: Error; statusCode?: number }
-	| { type: 'degrade'; reason: string };
+	| { type: "next" }
+	| { type: "goto"; stepName: string }
+	| { type: "retry"; stepName?: string; delayMs?: number }
+	| { type: "stop" }
+	| { type: "fail"; error: Error; statusCode?: number }
+	| { type: "degrade"; reason: string };
 
 /**
  * Context adjustment that can be applied during a transition.
@@ -58,9 +58,9 @@ export type Transition =
  * if the replacement object omits it.
  */
 export type ContextAdjustment<C extends BaseContext> =
-	| { type: 'none' }
-	| { type: 'patch'; patch: Partial<C> }
-	| { type: 'override'; ctx: C };
+	| { type: "none" }
+	| { type: "patch"; patch: Partial<C> }
+	| { type: "override"; ctx: C };
 
 export type PolicyDecisionInput<C extends BaseContext> = {
 	stepName: string;
@@ -79,18 +79,21 @@ export type PolicyDecisionOutput<C extends BaseContext> = {
  * by the orchestrator, enabling async policy lookups (feature flags, DB, etc.).
  */
 export interface PipelinePolicy<C extends BaseContext> {
-	decide(
-		input: PolicyDecisionInput<C>,
-	): PolicyDecisionOutput<C> | Promise<PolicyDecisionOutput<C>>;
+	decide(input: PolicyDecisionInput<C>): PolicyDecisionOutput<C> | Promise<PolicyDecisionOutput<C>>;
 	reset(): void;
 }
 
+export interface PipelineStep<C extends BaseContext> {
+	readonly name: string;
+	run(ctx: C, meta: StepRunMeta): Promise<StepResult<C>>;
+}
+
 /**
- * Extend this class to create pipeline steps.
+ * Optional base class for steps that want shared behavior across implementations.
  * `meta` carries the attempt count, previous outcome (on retries), and the
  * run's AbortSignal — use it for retry-aware logic and cooperative cancellation.
  */
-export abstract class PipelineStep<C extends BaseContext> {
+export abstract class BasePipelineStep<C extends BaseContext> implements PipelineStep<C> {
 	abstract readonly name: string;
 	abstract run(ctx: C, meta: StepRunMeta): Promise<StepResult<C>>;
 }
@@ -103,8 +106,8 @@ export type PipelineStatus = (typeof PIPELINE_STATUS)[keyof typeof PIPELINE_STAT
  * its `reason` string is the value supplied by the policy.
  */
 export type PipelineRunResult<C extends BaseContext> =
-	| { status: 'ok'; ctx: C; degraded?: { reason: string } }
-	| { status: 'failed'; ctx: C; error: PipelineError };
+	| { status: "ok"; ctx: C; degraded?: { reason: string } }
+	| { status: "failed"; ctx: C; error: PipelineError };
 
 export type GuidlioOrchestratorConfig<C extends BaseContext> = {
 	steps: PipelineStep<C>[];

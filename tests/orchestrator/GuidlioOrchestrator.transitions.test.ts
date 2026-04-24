@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext, PipelinePolicy, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext, PipelinePolicy, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
 import { ok, failed, redirect } from "../../src/orchestrator/statusHelpers";
 import { DefaultPolicy } from "../../src/orchestrator/policies/DefaultPolicy";
 import { PIPELINE_STATUS, TRANSITION_TYPE, OUTCOME_TYPE } from "../../src/orchestrator/constants";

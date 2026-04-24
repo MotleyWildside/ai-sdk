@@ -1,4 +1,4 @@
-import type { StepOutcome, PipelineStatus, Transition } from '../types';
+import type { StepOutcome, PipelineStatus, Transition } from "../types";
 
 /**
  * Observer interface for tracking pipeline execution events.

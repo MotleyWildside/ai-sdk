@@ -198,7 +198,7 @@ describe("GuidlioLMService — callText happy path", () => {
 	it("T-14: auto-generated traceId matches expected format", async () => {
 		reg.register(makePrompt({ promptId: "t14", version: "1" }));
 		const result = await svc.callText({ promptId: "t14" });
-		expect(result.traceId).toMatch(/^trace_[0-9a-f-]+$/);
+		expect(result.traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 	});
 
 	it("T-15: durationMs is a non-negative number", async () => {

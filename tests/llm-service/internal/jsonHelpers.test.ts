@@ -73,31 +73,31 @@ describe("validateSchema", () => {
 });
 
 describe("enforceJsonInstruction", () => {
-	it("JH-10: appends instruction to last user message", () => {
+	it("JH-10: appends instruction to existing system message", () => {
+		const msgs = [{ role: "system" as const, content: "You are a bot" }, { role: "user" as const, content: "Classify this" }];
+		const result = enforceJsonInstruction(msgs);
+		expect(result[0].content).toContain("ONLY valid JSON");
+		expect(result[0].role).toBe("system");
+	});
+
+	it("JH-10b: inserts system message with instruction when none exists", () => {
 		const msgs = [{ role: "user" as const, content: "Classify this" }];
-		enforceJsonInstruction(msgs);
-		expect(msgs[0].content).toContain("ONLY valid JSON");
+		const result = enforceJsonInstruction(msgs);
+		expect(result[0].role).toBe("system");
+		expect(result[0].content).toContain("ONLY valid JSON");
+		expect(result[1].content).toBe("Classify this");
 	});
 
-	it("JH-10b: idempotent — does not re-append if already instructed", () => {
-		const msgs = [{ role: "user" as const, content: "Return ONLY JSON format" }];
-		enforceJsonInstruction(msgs);
-		enforceJsonInstruction(msgs);
-		const count = (msgs[0].content.match(/ONLY|valid JSON|JSON format/g) || []).length;
-		expect(count).toBeGreaterThanOrEqual(1);
-		// Ensure no double instruction
-		expect(msgs[0].content.indexOf("ONLY valid JSON")).toBe(-1);
-	});
-
-	it("JH-11: last message is system — no-op", () => {
+	it("JH-10c: does not mutate the original array", () => {
 		const msgs = [{ role: "system" as const, content: "You are a bot" }];
 		const original = msgs[0].content;
 		enforceJsonInstruction(msgs);
 		expect(msgs[0].content).toBe(original);
 	});
 
-	it("JH-11b: empty messages array — no-op", () => {
+	it("JH-11b: empty messages array — returns empty", () => {
 		const msgs: { role: "user"; content: string }[] = [];
-		expect(() => enforceJsonInstruction(msgs)).not.toThrow();
+		const result = enforceJsonInstruction(msgs);
+		expect(result).toEqual([]);
 	});
 });

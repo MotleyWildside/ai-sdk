@@ -15,7 +15,7 @@ export { InMemoryCacheProvider } from "./llm-service";
 // Pipeline Framework (Orchestrator)
 export {
 	GuidlioOrchestrator,
-	PipelineStep,
+	BasePipelineStep,
 	DefaultPolicy,
 	LoggerPipelineObserver,
 	PIPELINE_STATUS,
@@ -30,6 +30,7 @@ export {
 } from "./orchestrator";
 
 export type {
+	PipelineStep,
 	PipelineRunResult,
 	GuidlioOrchestratorConfig,
 	PipelineRunOptions,
@@ -42,6 +43,7 @@ export type {
 // Global Types
 export type {
 	LLMTextParams,
+	LLMStreamParams,
 	LLMJsonParams,
 	LLMTextResult,
 	LLMJsonResult,
@@ -56,11 +58,7 @@ export type {
 export type { CacheConfig } from "./llm-service/cache/types";
 export type { LLMLogger } from "./logger/types";
 
-export type {
-	PromptDefinition,
-	PromptOutputConfig,
-	PromptModelDefaults,
-} from "./llm-service";
+export type { PromptDefinition, PromptOutputConfig, PromptModelDefaults } from "./llm-service";
 
 // Errors
 export {

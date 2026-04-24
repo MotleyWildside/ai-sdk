@@ -34,11 +34,11 @@ describe("selectProvider", () => {
 		expect(result.name).toBe("pB");
 	});
 
-	it("strictProviderSelection:true — throws when no provider matches", () => {
+	it("throws by default when no provider matches (strictProviderSelection defaults to true)", () => {
 		const pA = makeMockProvider({ name: "pA", supports: () => false });
 		const map = makeMap(pA);
 		expect(() =>
-			selectProvider(map, "unknown-model", { providers: [pA], strictProviderSelection: true }, null),
+			selectProvider(map, "unknown-model", { providers: [pA] }, null),
 		).toThrow(/No registered provider supports model/);
 	});
 
@@ -46,7 +46,7 @@ describe("selectProvider", () => {
 		const pA = makeMockProvider({ name: "pA", supports: () => false });
 		const map = makeMap(pA);
 		const log = makeMockLogger();
-		const result = selectProvider(map, "unknown-model", { providers: [pA] }, log);
+		const result = selectProvider(map, "unknown-model", { providers: [pA], strictProviderSelection: false }, log);
 		expect(log.warn).toHaveBeenCalled();
 		expect(result.name).toBe("pA");
 	});
@@ -54,7 +54,7 @@ describe("selectProvider", () => {
 	it("throws when no providers are available (empty map)", () => {
 		const map = new Map();
 		expect(() =>
-			selectProvider(map, "any-model", { providers: [] }, null),
+			selectProvider(map, "any-model", { providers: [], strictProviderSelection: false }, null),
 		).toThrow(/No LLM providers available/);
 	});
 });

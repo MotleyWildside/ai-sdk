@@ -1,5 +1,5 @@
-import { DefaultPolicy } from './DefaultPolicy';
-import type { BaseContext, StepOutcomeRedirect, PolicyDecisionInput, Transition } from '../types';
+import { DefaultPolicy } from "./DefaultPolicy";
+import type { BaseContext, StepOutcomeRedirect, PolicyDecisionInput, Transition } from "../types";
 
 /**
  * A map from `outcome.message` to a step name.
@@ -39,15 +39,15 @@ export class RedirectRoutingPolicy<C extends BaseContext> extends DefaultPolicy<
 		const target = outcome.message ? this.routes[outcome.message] : undefined;
 
 		if (target) {
-			return { type: 'goto', stepName: target };
+			return { type: "goto", stepName: target };
 		}
 
-		const known = Object.keys(this.routes).join(', ');
+		const known = Object.keys(this.routes).join(", ");
 		return {
-			type: 'fail',
+			type: "fail",
 			error: new Error(
-				`RedirectRoutingPolicy: no route for message "${outcome.message ?? '(none)'}" ` +
-				`from step "${input.stepName}". Known messages: [${known}].`,
+				`RedirectRoutingPolicy: no route for message "${outcome.message ?? "(none)"}" ` +
+					`from step "${input.stepName}". Known messages: [${known}].`,
 			),
 		};
 	}

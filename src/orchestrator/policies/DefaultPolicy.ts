@@ -7,8 +7,8 @@ import type {
 	StepOutcomeRedirect,
 	Transition,
 	BaseContext,
-} from '../types';
-import { OUTCOME_TYPE, TRANSITION_TYPE } from '../constants';
+} from "../types";
+import { OUTCOME_TYPE, TRANSITION_TYPE } from "../constants";
 
 /**
  * Base class for pipeline policies. Subclass and override protected methods to
@@ -24,7 +24,9 @@ import { OUTCOME_TYPE, TRANSITION_TYPE } from '../constants';
  * complete StepResult without needing to store them separately.
  */
 export class DefaultPolicy<C extends BaseContext> implements PipelinePolicy<C> {
-	decide(input: PolicyDecisionInput<C>): PolicyDecisionOutput<C> | Promise<PolicyDecisionOutput<C>> {
+	decide(
+		input: PolicyDecisionInput<C>,
+	): PolicyDecisionOutput<C> | Promise<PolicyDecisionOutput<C>> {
 		return { transition: this.getTransitionForOutcome(input) };
 	}
 
@@ -64,7 +66,7 @@ export class DefaultPolicy<C extends BaseContext> implements PipelinePolicy<C> {
 			type: TRANSITION_TYPE.FAIL,
 			error: new Error(
 				`Step "${input.stepName}" emitted a redirect but no routing is configured. ` +
-				`Override DefaultPolicy.redirect() or decide() to handle it.`,
+					`Override DefaultPolicy.redirect() or decide() to handle it.`,
 			),
 		};
 	}

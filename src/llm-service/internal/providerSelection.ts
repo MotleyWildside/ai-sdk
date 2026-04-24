@@ -7,8 +7,8 @@ import type { LLMLogger } from "../../logger/types";
  *
  * 1. If `config.defaultProvider` resolves, use it.
  * 2. Otherwise pick the first registered provider whose `supportsModel` matches.
- * 3. With `strictProviderSelection` enabled, throw if nothing matches.
- * 4. Otherwise warn and fall back to the first registered provider.
+ * 3. Unless `strictProviderSelection: false`, throw if nothing matches.
+ * 4. With `strictProviderSelection: false`, warn and fall back to the first registered provider.
  *
  * Misconfiguration warnings go to `logger.warn`, not `llmCall`, so they don't
  * inflate failed-call metrics.
@@ -33,7 +33,7 @@ export function selectProvider(
 		if (provider.supportsModel(model)) return provider;
 	}
 
-	if (config.strictProviderSelection) {
+	if (config.strictProviderSelection !== false) {
 		throw new Error(`No registered provider supports model "${model}"`);
 	}
 

@@ -1,269 +1,249 @@
-import OpenAI from 'openai';
-import { LLMError, LLMTransientError, LLMPermanentError } from '../errors';
+import OpenAI from "openai";
+import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
 import type {
-  LLMProvider,
-  LLMProviderRequest,
-  LLMProviderResponse,
-  LLMProviderStreamResponse,
-  LLMProviderEmbedRequest,
-  LLMProviderEmbedResponse,
-  LLMProviderEmbedBatchRequest,
-  LLMProviderEmbedBatchResponse,
-} from './types';
+	LLMProvider,
+	LLMProviderRequest,
+	LLMProviderResponse,
+	LLMProviderStreamResponse,
+	LLMProviderEmbedRequest,
+	LLMProviderEmbedResponse,
+	LLMProviderEmbedBatchRequest,
+	LLMProviderEmbedBatchResponse,
+} from "./types";
 
 /**
  * OpenAI provider adapter
  */
 export class OpenAIProvider implements LLMProvider {
-  readonly name = 'openai';
+	readonly name = "openai";
 
-  /**
-   * OpenAI model prefixes that this provider supports
-   */
-  private readonly supportedModelPrefixes = [
-    'gpt-',
-    'o1-',
-    'o3-',
-    'text-embedding-3-',
-  ];
+	/**
+	 * OpenAI model prefixes that this provider supports
+	 */
+	private readonly supportedModelPrefixes = [
+		"gpt-",
+		"o1-",
+		"o3-",
+		"o4-",
+		"text-embedding-3-",
+		"text-embedding-ada-",
+		"davinci-",
+		"babbage-",
+	];
 
-  private client: OpenAI | null = null;
+	private client: OpenAI | null = null;
 
-  constructor(private apiKey: string) {}
+	constructor(private apiKey: string) {}
 
-  private getClient(): OpenAI {
-    if (!this.client) {
-      this.client = new OpenAI({
-        apiKey: this.apiKey,
-      });
-    }
-    return this.client;
-  }
+	private getClient(): OpenAI {
+		if (!this.client) {
+			this.client = new OpenAI({
+				apiKey: this.apiKey,
+			});
+		}
+		return this.client;
+	}
 
-  /**
-   * Convert normalized request to OpenAI format
-   */
-  private normalizeMessages(
-    messages: LLMProviderRequest['messages']
-  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    return messages.map((msg) => {
-      return {
-        role: msg.role,
-        content: msg.content,
-      };
-    });
-  }
+	/**
+	 * Convert normalized request to OpenAI format
+	 */
+	private normalizeMessages(
+		messages: LLMProviderRequest["messages"],
+	): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+		return messages.map((msg) => {
+			return {
+				role: msg.role,
+				content: msg.content,
+			};
+		});
+	}
 
-  /**
-   * Call OpenAI API with streaming response
-   */
-  async callStream(
-    request: LLMProviderRequest
-  ): Promise<LLMProviderStreamResponse> {
-    try {
-      const client = this.getClient();
+	/**
+	 * Call OpenAI API with streaming response
+	 */
+	async callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse> {
+		try {
+			const client = this.getClient();
 
-      const openaiParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming =
-        {
-          model: request.model,
-          messages: this.normalizeMessages(request.messages),
-          temperature: request.temperature,
-          max_tokens: request.maxTokens,
-          top_p: request.topP,
-          seed: request.seed,
-          stream: true,
-        };
+			const openaiParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+				model: request.model,
+				messages: this.normalizeMessages(request.messages),
+				temperature: request.temperature,
+				max_tokens: request.maxTokens,
+				top_p: request.topP,
+				seed: request.seed,
+				stream: true,
+			};
 
-      if (request.responseFormat === 'json') {
-        openaiParams.response_format = { type: 'json_object' };
-      }
+			if (request.responseFormat === "json") {
+				openaiParams.response_format = { type: "json_object" };
+			}
 
-      const stream = await client.chat.completions.create(openaiParams, {
-        signal: request.signal,
-      });
+			const stream = await client.chat.completions.create(openaiParams, {
+				signal: request.signal,
+			});
 
-      return {
-        stream: (async function* () {
-          let fullText = '';
-          for await (const part of stream) {
-            const delta = part.choices[0]?.delta?.content || '';
-            fullText += delta;
-            yield { text: fullText, delta };
-          }
-        })(),
-      };
-    } catch (error) {
-      // Reuse error handling logic from call() if possible, or just wrap
-      throw this.wrapError(error, request.model);
-    }
-  }
+			const wrapError = (e: unknown) => this.wrapError(e, request.model);
+			return {
+				stream: (async function* () {
+					let fullText = "";
+					try {
+						for await (const part of stream) {
+							const delta = part.choices[0]?.delta?.content || "";
+							fullText += delta;
+							yield { text: fullText, delta };
+						}
+					} catch (error) {
+						throw wrapError(error);
+					}
+				})(),
+			};
+		} catch (error) {
+			// Reuse error handling logic from call() if possible, or just wrap
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-  private wrapError(error: unknown, model: string): Error {
-    if (error instanceof OpenAI.APIError) {
-      const statusCode = error.status || 500;
-      const isTransient =
-        statusCode === 429 ||
-        statusCode >= 500 ||
-        error.code === 'rate_limit_exceeded' ||
-        error.code === 'server_error' ||
-        error.code === 'timeout';
+	private wrapError(error: unknown, model: string): Error {
+		if (error instanceof OpenAI.APIError) {
+			const statusCode = error.status || 500;
+			const isTransient =
+				statusCode === 429 ||
+				statusCode >= 500 ||
+				error.code === "rate_limit_exceeded" ||
+				error.code === "server_error" ||
+				error.code === "timeout";
 
-      if (isTransient) {
-        return new LLMTransientError(
-          `OpenAI API error: ${error.message}`,
-          'openai',
-          model,
-          undefined,
-          undefined,
-          statusCode,
-          error
-        );
-      } else {
-        return new LLMPermanentError(
-          `OpenAI API error: ${error.message}`,
-          'openai',
-          model,
-          undefined,
-          undefined,
-          statusCode,
-          error
-        );
-      }
-    }
+			const opts = {
+				message: `OpenAI API error: ${error.message}`,
+				provider: "openai",
+				model,
+				statusCode,
+				cause: error,
+			};
+			return isTransient ? new LLMTransientError(opts) : new LLMPermanentError(opts);
+		}
 
-    if (error instanceof LLMError) {
-      return error;
-    }
+		if (error instanceof LLMError) return error;
 
-    return new LLMError(
-      error instanceof Error ? error.message : 'Unknown error',
-      'openai',
-      model,
-      undefined,
-      undefined,
-      undefined,
-      error instanceof Error ? error : new Error(String(error))
-    );
-  }
+		return new LLMError({
+			message: error instanceof Error ? error.message : "Unknown error",
+			provider: "openai",
+			model,
+			cause: error instanceof Error ? error : new Error(String(error)),
+		});
+	}
 
-  /**
-   * Call OpenAI API with normalized request
-   */
-  async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
-    try {
-      const client = this.getClient();
+	/**
+	 * Call OpenAI API with normalized request
+	 */
+	async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
+		try {
+			const client = this.getClient();
 
-      const openaiParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming =
-        {
-          model: request.model,
-          messages: this.normalizeMessages(request.messages),
-          temperature: request.temperature,
-          max_tokens: request.maxTokens,
-          top_p: request.topP,
-          seed: request.seed,
-        };
+			const openaiParams: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
+				model: request.model,
+				messages: this.normalizeMessages(request.messages),
+				temperature: request.temperature,
+				max_tokens: request.maxTokens,
+				top_p: request.topP,
+				seed: request.seed,
+			};
 
-      if (request.responseFormat === 'json') {
-        openaiParams.response_format = { type: 'json_object' };
-      }
+			if (request.responseFormat === "json") {
+				openaiParams.response_format = { type: "json_object" };
+			}
 
-      const completion = await client.chat.completions.create(openaiParams, {
-        signal: request.signal,
-      });
+			const completion = await client.chat.completions.create(openaiParams, {
+				signal: request.signal,
+			});
 
-      const choice = completion.choices[0];
-      const message = choice?.message;
+			const choice = completion.choices[0];
+			const message = choice?.message;
 
-      if (!message?.content) {
-        throw new LLMError(
-          'No response content from OpenAI',
-          'openai',
-          request.model,
-          undefined,
-          completion.id
-        );
-      }
+			if (!message?.content) {
+				throw new LLMError({
+					message: "No response content from OpenAI",
+					provider: "openai",
+					model: request.model,
+					requestId: completion.id,
+				});
+			}
 
-      return {
-        text: message.content,
-        raw: completion,
-        usage: completion.usage
-          ? {
-              promptTokens: completion.usage.prompt_tokens,
-              completionTokens: completion.usage.completion_tokens,
-              totalTokens: completion.usage.total_tokens,
-            }
-          : undefined,
-        finishReason: choice?.finish_reason,
-        requestId: completion.id,
-      };
-    } catch (error) {
-      throw this.wrapError(error, request.model);
-    }
-  }
+			return {
+				text: message.content,
+				raw: completion,
+				usage: completion.usage
+					? {
+							promptTokens: completion.usage.prompt_tokens,
+							completionTokens: completion.usage.completion_tokens,
+							totalTokens: completion.usage.total_tokens,
+						}
+					: undefined,
+				finishReason: choice?.finish_reason,
+				requestId: completion.id,
+			};
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-  /**
-   * Generate vector embedding for text
-   */
-  async embed(
-    request: LLMProviderEmbedRequest
-  ): Promise<LLMProviderEmbedResponse> {
-    try {
-      const client = this.getClient();
-      const response = await client.embeddings.create(
-        {
-          model: request.model,
-          input: request.text,
-          dimensions: request.dimensions ?? 1536,
-        },
-        { signal: request.signal }
-      );
+	/**
+	 * Generate vector embedding for text
+	 */
+	async embed(request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> {
+		try {
+			const client = this.getClient();
+			const response = await client.embeddings.create(
+				{
+					model: request.model,
+					input: request.text,
+					dimensions: request.dimensions ?? 1536,
+				},
+				{ signal: request.signal },
+			);
 
-      return {
-        embedding: response.data[0].embedding,
-        usage: {
-          totalTokens: response.usage.total_tokens,
-        },
-      };
-    } catch (error) {
-      throw this.wrapError(error, request.model);
-    }
-  }
+			return {
+				embedding: response.data[0].embedding,
+				usage: {
+					totalTokens: response.usage.total_tokens,
+				},
+			};
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-  /**
-   * Generate vector embeddings for multiple texts using batch input
-   */
-  async embedBatch(
-    request: LLMProviderEmbedBatchRequest
-  ): Promise<LLMProviderEmbedBatchResponse> {
-    try {
-      const client = this.getClient();
-      const response = await client.embeddings.create(
-        {
-          model: request.model,
-          input: request.texts,
-          dimensions: request.dimensions ?? 1536,
-        },
-        { signal: request.signal }
-      );
+	/**
+	 * Generate vector embeddings for multiple texts using batch input
+	 */
+	async embedBatch(request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> {
+		try {
+			const client = this.getClient();
+			const response = await client.embeddings.create(
+				{
+					model: request.model,
+					input: request.texts,
+					dimensions: request.dimensions ?? 1536,
+				},
+				{ signal: request.signal },
+			);
 
-      return {
-        embeddings: response.data.map((d) => d.embedding),
-        usage: {
-          totalTokens: response.usage.total_tokens,
-        },
-      };
-    } catch (error) {
-      throw this.wrapError(error, request.model);
-    }
-  }
+			return {
+				embeddings: response.data.map((d) => d.embedding),
+				usage: {
+					totalTokens: response.usage.total_tokens,
+				},
+			};
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
 
-  /**
-   * Check if this provider supports a given model
-   */
-  supportsModel(model: string): boolean {
-    return this.supportedModelPrefixes.some((prefix) =>
-      model.toLowerCase().startsWith(prefix)
-    );
-  }
+	/**
+	 * Check if this provider supports a given model
+	 */
+	supportsModel(model: string): boolean {
+		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
+	}
 }

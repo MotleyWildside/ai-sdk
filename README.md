@@ -8,9 +8,9 @@ Stop fighting with multiple SDKs. **guidlio-lm** provides a unified interface fo
 
 ## ✨ Features
 
-- **Unified API**: One interface for OpenAI, Anthropic (via OpenRouter), and Gemini.
+- **Unified API**: One interface for OpenAI, Gemini, and OpenRouter (Anthropic, Meta Llama, Mistral, DeepSeek, Cohere, Qwen, and more via OpenRouter).
 - **Smart Caching**: Built-in `read_through` and `refresh` modes to save costs and latency.
-- **Type-Safe Schema**: Native Zod integration for guaranteed structured outputs.
+- **Type-Safe Schema**: Native Zod integration for schema-validated structured outputs. Parse failures and schema mismatches raise typed errors (`LLMParseError` / `LLMSchemaError`) for explicit handling.
 - **Prompt Registry**: Decouple prompts from code with versioning and variables.
 - **Pipeline Orchestrator**: Build complex, stateful AI workflows with ease.
 
@@ -41,8 +41,9 @@ Decouple your prompts from code using the built-in registry. Supports variables,
 llm.promptRegistry.register({
 	promptId: "hello_world",
 	version: 1,
-	system: "You are a helpful assistant.",
-	userTemplate: "Hello, {name}! How are you today?",
+	systemPrompt: "You are a helpful assistant.",
+	userPrompt: "Hello, {name}! How are you today?",
+	output: { type: "text" },
 	modelDefaults: {
 		model: "gpt-4o",
 		temperature: 0.7,
@@ -52,8 +53,8 @@ llm.promptRegistry.register({
 llm.promptRegistry.register({
 	promptId: "get_city_info",
 	version: 1,
-	system: "You are a travel expert.",
-	userTemplate: "Provide details about {city}.",
+	systemPrompt: "You are a travel expert.",
+	userPrompt: "Provide details about {city}.",
 	output: { type: "json" }, // Enforces JSON mode
 	modelDefaults: { model: "gemini-1.5-flash" },
 });

@@ -50,7 +50,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 		const provider = makeMockProvider({
 			embedImpl: async () => {
 				attempts++;
-				if (attempts < 3) throw new LLMTransientError("rate limit", "mock", "mock-model");
+				if (attempts < 3) throw new LLMTransientError({ message: "rate limit", provider: "mock", model: "mock-model" });
 				return { embedding: [0.1], usage: { totalTokens: 1 } };
 			},
 		});

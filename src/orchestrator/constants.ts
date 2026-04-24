@@ -6,29 +6,29 @@
  * Step outcome types (semantic).
  */
 export const OUTCOME_TYPE = {
-  OK: 'ok',
-  FAILED: 'failed',
-  REDIRECT: 'redirect',
+	OK: "ok",
+	FAILED: "failed",
+	REDIRECT: "redirect",
 } as const;
 
 /**
  * Transition types (control flow).
  */
 export const TRANSITION_TYPE = {
-  NEXT: 'next',
-  GOTO: 'goto',
-  RETRY: 'retry',
-  STOP: 'stop',
-  FAIL: 'fail',
-  DEGRADE: 'degrade',
+	NEXT: "next",
+	GOTO: "goto",
+	RETRY: "retry",
+	STOP: "stop",
+	FAIL: "fail",
+	DEGRADE: "degrade",
 } as const;
 
 /**
  * Pipeline run result statuses.
  */
 export const PIPELINE_STATUS = {
-  OK: 'ok',
-  FAILED: 'failed',
+	OK: "ok",
+	FAILED: "failed",
 } as const;
 
 /**

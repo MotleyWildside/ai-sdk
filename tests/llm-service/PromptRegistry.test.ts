@@ -29,10 +29,10 @@ describe("PromptRegistry", () => {
 		expect(reg.getPrompt("p1")?.version).toBe("2.0");
 	});
 
-	it("PR-04: versions 'v1.0' and 'v2.0' (NaN path) — lexicographic pick: 'v2.0'", () => {
-		reg.register(makePrompt({ promptId: "p1", version: "v1.0" }));
-		reg.register(makePrompt({ promptId: "p1", version: "v2.0" }));
-		expect(reg.getPrompt("p1")?.version).toBe("v2.0");
+	it("PR-04: non-integer version string (e.g. 'v1.0') — throws at register time", () => {
+		expect(() => reg.register(makePrompt({ promptId: "p1", version: "v1.0" }))).toThrow(
+			/must be a non-negative integer/,
+		);
 	});
 
 	it("PR-05: register same id@version twice — second overwrites; latest recomputed", () => {

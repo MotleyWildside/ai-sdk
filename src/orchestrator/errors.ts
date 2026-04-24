@@ -4,7 +4,7 @@ export class OrchestratorError extends Error {
 		public readonly statusCode: number = 500,
 	) {
 		super(message);
-		this.name = 'OrchestratorError';
+		this.name = "OrchestratorError";
 		Object.setPrototypeOf(this, OrchestratorError.prototype);
 	}
 }
@@ -21,9 +21,9 @@ export class PipelineError extends OrchestratorError {
 		// runtime tooling (Node, Sentry, etc.) can follow the chain automatically.
 		super(message, statusCode);
 		if (cause !== undefined) {
-			Object.defineProperty(this, 'cause', { value: cause, configurable: true, writable: true });
+			Object.defineProperty(this, "cause", { value: cause, configurable: true, writable: true });
 		}
-		this.name = 'PipelineError';
+		this.name = "PipelineError";
 		Object.setPrototypeOf(this, PipelineError.prototype);
 	}
 }
@@ -36,7 +36,7 @@ export class PipelineError extends OrchestratorError {
 export class PipelineDefinitionError extends Error {
 	constructor(message: string) {
 		super(message);
-		this.name = 'PipelineDefinitionError';
+		this.name = "PipelineDefinitionError";
 		Object.setPrototypeOf(this, PipelineDefinitionError.prototype);
 	}
 }
@@ -50,7 +50,7 @@ export class StepExecutionError extends PipelineError {
 		cause?: unknown,
 	) {
 		super(message, traceId, stepName, statusCode, cause);
-		this.name = 'StepExecutionError';
+		this.name = "StepExecutionError";
 		Object.setPrototypeOf(this, StepExecutionError.prototype);
 	}
 }
@@ -61,8 +61,8 @@ export class StepExecutionError extends PipelineError {
  */
 export class PipelineAbortedError extends PipelineError {
 	constructor(traceId: string, stepName?: string, cause?: unknown) {
-		super('Pipeline was aborted', traceId, stepName, 499, cause);
-		this.name = 'PipelineAbortedError';
+		super("Pipeline was aborted", traceId, stepName, 499, cause);
+		this.name = "PipelineAbortedError";
 		Object.setPrototypeOf(this, PipelineAbortedError.prototype);
 	}
 }

@@ -24,6 +24,12 @@ export interface LLMTextParams {
 }
 
 /**
+ * Parameters for streaming generation. `cache` and `idempotencyKey` are
+ * intentionally excluded — streams are not cached.
+ */
+export type LLMStreamParams = Omit<LLMTextParams, "cache" | "idempotencyKey">;
+
+/**
  * Parameters for JSON generation
  */
 export interface LLMJsonParams<T = unknown> extends LLMTextParams {
@@ -159,6 +165,12 @@ export interface GuidlioLMServiceConfig {
 	 * definition specify one.
 	 */
 	defaultModel?: string;
+	/**
+	 * Final fallback temperature when neither call params nor the prompt's
+	 * `modelDefaults` specify one. Default: 0.7 (a balanced setting for most
+	 * chat use-cases). Set to `undefined` to let each provider apply its own
+	 * default instead.
+	 */
 	defaultTemperature?: number;
 	/**
 	 * Maximum number of call attempts (1 = no retries, 3 = original + 2 retries).
@@ -175,13 +187,28 @@ export interface GuidlioLMServiceConfig {
 	 */
 	maxDelayMs?: number;
 	/**
-	 * When true, `getProvider` throws if no registered provider supports the model
-	 * (instead of falling back to the first registered provider). Defaults to false
-	 * for backwards compatibility.
+	 * When true (the default), throws if no registered provider supports the model.
+	 * Set to false to fall back silently to the first registered provider instead.
 	 */
 	strictProviderSelection?: boolean;
+	/**
+	 * Enable response caching globally. When `false`, all cache operations are
+	 * no-ops regardless of per-call `cache` config. Default: `false`.
+	 */
 	enableCache?: boolean;
+	/**
+	 * Cache backend to use when `enableCache` is `true`. If omitted,
+	 * `InMemoryCacheProvider` is used automatically.
+	 */
 	cacheProvider?: CacheProvider;
+	/**
+	 * Prompt registry instance. A new `PromptRegistry` is created automatically
+	 * if not provided.
+	 */
 	promptRegistry?: PromptRegistry;
+	/**
+	 * Logger for internal service events. When omitted, no logging is emitted.
+	 * Pass `new ConsoleLogger()` to enable the built-in console logger.
+	 */
 	logger?: LLMLogger;
 }

@@ -1,8 +1,8 @@
-import type { BaseContext, PipelineRunOptions } from './types';
+import { randomUUID } from "crypto";
+import type { BaseContext, PipelineRunOptions } from "./types";
 
-// Node ≥18 always has crypto.randomUUID — no fallback needed.
 export function generateTraceId(): string {
-	return crypto.randomUUID();
+	return randomUUID();
 }
 
 export function getTraceId<C extends BaseContext>(ctx: C, opts?: PipelineRunOptions): string {

@@ -87,7 +87,7 @@ describe("EchoProvider — contract tests", () => {
 		const customEcho = new EchoProvider();
 		vi.spyOn(customEcho, "call").mockImplementation(async () => {
 			calls++;
-			if (calls === 1) throw new LLMTransientError("rate limit", "echo", "echo-1");
+			if (calls === 1) throw new LLMTransientError({ message: "rate limit", provider: "echo", model: "echo-1" });
 			return { text: "ok", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" };
 		});
 		reg.register(makePrompt({ promptId: "ec7", version: "1" }));

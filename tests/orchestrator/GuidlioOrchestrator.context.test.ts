@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
-import { PipelineStep, StepResult, BaseContext, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
+import { BasePipelineStep as PipelineStep, StepResult, BaseContext, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
 import { ok } from "../../src/orchestrator/statusHelpers";
 import { DefaultPolicy } from "../../src/orchestrator/policies/DefaultPolicy";
 

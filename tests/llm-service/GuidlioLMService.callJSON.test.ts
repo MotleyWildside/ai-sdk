@@ -32,37 +32,31 @@ describe("GuidlioLMService — callJSON", () => {
 		await expect(svc.callJSON({ promptId: "j1" })).rejects.toThrow(/not configured for JSON output/);
 	});
 
-	it("J-02: appends JSON instruction when last message is user and no instruction present", async () => {
+	it("J-02: JSON instruction appears in system message sent to provider", async () => {
 		reg.register(makeJsonPrompt({ promptId: "j2", version: "1", userPrompt: "Classify this" }));
 		const { svc, provider } = makeJsonService('{"ok":true}');
 		await svc.callJSON({ promptId: "j2" });
 		const [req] = provider.call.mock.calls[0];
-		const lastMsg = req.messages[req.messages.length - 1];
-		expect(lastMsg.content).toContain("ONLY valid JSON");
+		const systemMsg = req.messages.find((m: { role: string }) => m.role === "system");
+		expect(systemMsg?.content).toContain("ONLY valid JSON");
 	});
 
-	it("J-03: does not append instruction when message already contains 'valid JSON'", async () => {
-		reg.register(makeJsonPrompt({ promptId: "j3", version: "1", userPrompt: "Return only valid JSON please" }));
+	it("J-03: instruction is always appended to system message regardless of user message content", async () => {
+		reg.register(makeJsonPrompt({ promptId: "j3", version: "1", systemPrompt: "You are a bot", userPrompt: "Return only valid JSON please" }));
 		const { svc, provider } = makeJsonService('{"ok":true}');
 		await svc.callJSON({ promptId: "j3" });
 		const [req] = provider.call.mock.calls[0];
-		const lastMsg = req.messages[req.messages.length - 1];
-		// Count occurrences of 'valid JSON' — should be exactly 1
-		const matches = (lastMsg.content.match(/valid JSON/g) || []).length;
-		expect(matches).toBe(1);
+		const systemMsg = req.messages.find((m: { role: string }) => m.role === "system");
+		expect(systemMsg?.content).toContain("ONLY valid JSON");
 	});
 
-	it("J-04: does not append instruction when last message is system (only systemPrompt, no userPrompt)", async () => {
-		// The enforceJsonInstruction no-ops when the last message is not user role.
-		// With only a systemPrompt and no userPrompt, there are no messages actually
-		// (buildMessages skips undefined prompts). Verify the instruction is not appended.
-		// We test via the internal function directly, since an empty message array
-		// means the provider call receives an empty array.
-		const { enforceJsonInstruction } = await import("../../src/llm-service/internal/jsonHelpers");
-		const msgs = [{ role: "system" as const, content: "You are a bot" }];
-		const original = msgs[0].content;
-		enforceJsonInstruction(msgs);
-		expect(msgs[0].content).toBe(original);
+	it("J-04: instruction inserted as new system message when prompt has no systemPrompt", async () => {
+		reg.register(makeJsonPrompt({ promptId: "j4b", version: "1", userPrompt: "Give me data" }));
+		const { svc, provider } = makeJsonService('{"ok":true}');
+		await svc.callJSON({ promptId: "j4b" });
+		const [req] = provider.call.mock.calls[0];
+		expect(req.messages[0].role).toBe("system");
+		expect(req.messages[0].content).toContain("ONLY valid JSON");
 	});
 
 	it("J-05: pure valid JSON from provider — .data is the parsed object", async () => {

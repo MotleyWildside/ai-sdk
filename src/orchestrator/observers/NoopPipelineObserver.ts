@@ -1,5 +1,5 @@
-import type { StepOutcome, PipelineStatus, Transition } from '../types';
-import type { PipelineObserver } from './PipelineObserver';
+import type { StepOutcome, PipelineStatus, Transition } from "../types";
+import type { PipelineObserver } from "./PipelineObserver";
 
 /**
  * No-op observer. Use as a base class or pass directly when observability is

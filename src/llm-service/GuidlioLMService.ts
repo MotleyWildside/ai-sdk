@@ -1,14 +1,12 @@
 import { randomUUID } from "crypto";
 import { PromptRegistry } from "./prompts-registry/PromptRegistry";
 import type { PromptDefinition } from "./prompts-registry/types";
-import type {
-	LLMProvider,
-	LLMProviderResponse,
-} from "./providers/types";
+import type { LLMProvider, LLMProviderResponse } from "./providers/types";
 import type { CacheProvider } from "./cache/types";
 import { InMemoryCacheProvider } from "./cache/CacheProvider";
 import type {
 	LLMTextParams,
+	LLMStreamParams,
 	LLMJsonParams,
 	LLMTextResult,
 	LLMJsonResult,
@@ -25,13 +23,12 @@ import { CallContext, logOutcome, errorMessage } from "./internal/logContext";
 import { callWithRetries } from "./internal/retry";
 import { buildCacheKey } from "./internal/cacheKey";
 import { selectProvider } from "./internal/providerSelection";
-import {
-	parseAndRepairJSON,
-	validateSchema,
-	enforceJsonInstruction,
-} from "./internal/jsonHelpers";
+import { parseAndRepairJSON, validateSchema, enforceJsonInstruction } from "./internal/jsonHelpers";
 
 // ──────────────────────────────────────────────────────────────────────────────
+
+// Widely-accepted balanced default; each provider's own default varies (OpenAI/Anthropic: 1.0).
+const DEFAULT_TEMPERATURE = 0.7;
 
 type ResolvedPrompt = {
 	prompt: PromptDefinition;
@@ -52,9 +49,7 @@ export class GuidlioLMService {
 
 	constructor(private config: GuidlioLMServiceConfig) {
 		if (!config.providers || config.providers.length === 0) {
-			throw new Error(
-				"At least one provider must be specified in GuidlioLMServiceConfig",
-			);
+			throw new Error("At least one provider must be specified in GuidlioLMServiceConfig");
 		}
 
 		for (const provider of config.providers) {
@@ -88,16 +83,12 @@ export class GuidlioLMService {
 	/**
 	 * Generate JSON response with schema validation
 	 */
-	async callJSON<T = unknown>(
-		params: LLMJsonParams<T>,
-	): Promise<LLMJsonResult<T>> {
+	async callJSON<T = unknown>(params: LLMJsonParams<T>): Promise<LLMJsonResult<T>> {
 		return this.executeGeneration<LLMJsonResult<T>>(params, {
 			responseFormat: "json",
 			validatePrompt: (prompt) => {
 				if (prompt.output.type !== "json") {
-					throw new Error(
-						`Prompt ${params.promptId} is not configured for JSON output`,
-					);
+					throw new Error(`Prompt ${params.promptId} is not configured for JSON output`);
 				}
 			},
 			prepareMessages: enforceJsonInstruction,
@@ -126,19 +117,12 @@ export class GuidlioLMService {
 	/**
 	 * Generate streaming response.
 	 * Note: streaming bypasses retry logic — handle reconnection at the call site if needed.
-	 * Cache and idempotency settings on `params` are ignored and will emit a warn-log
-	 * if provided.
+	 * `cache` and `idempotencyKey` are excluded from the param type; pass them and TypeScript
+	 * will reject the call at compile time.
 	 */
-	async callStream(params: LLMTextParams): Promise<LLMStreamResult> {
+	async callStream(params: LLMStreamParams): Promise<LLMStreamResult> {
 		const traceId = params.traceId || this.generateTraceId();
 		const { prompt, model, provider } = this.resolveCall(params);
-
-		if (params.cache || params.idempotencyKey) {
-			this.logger?.warn(
-				"callStream ignores `cache` and `idempotencyKey` params — streams are not cached",
-				{ traceId, promptId: params.promptId, model },
-			);
-		}
 
 		const ctx: CallContext = {
 			traceId,
@@ -149,18 +133,25 @@ export class GuidlioLMService {
 			startedAt: Date.now(),
 		};
 		const messages = this.promptReg.buildMessages(prompt, params.variables);
-		const providerRequest = this.buildProviderRequest(
-			params,
-			prompt,
-			model,
-			messages,
-			"text",
-		);
+		const providerRequest = this.buildProviderRequest(params, prompt, model, messages, "text");
 
 		try {
 			const response = await provider.callStream(providerRequest);
+			const logger = this.logger;
 			return {
-				stream: response.stream,
+				stream: (async function* () {
+					try {
+						yield* response.stream;
+						logOutcome(logger, ctx, { success: true, durationMs: Date.now() - ctx.startedAt });
+					} catch (error) {
+						logOutcome(logger, ctx, {
+							success: false,
+							error: errorMessage(error),
+							durationMs: Date.now() - ctx.startedAt,
+						});
+						throw error;
+					}
+				})(),
 				traceId,
 				promptId: params.promptId,
 				promptVersion: prompt.version,
@@ -170,7 +161,7 @@ export class GuidlioLMService {
 			logOutcome(this.logger, ctx, {
 				success: false,
 				error: errorMessage(error),
-				durationMs: 0,
+				durationMs: Date.now() - ctx.startedAt,
 			});
 			throw error;
 		}
@@ -234,7 +225,7 @@ export class GuidlioLMService {
 		options: {
 			responseFormat: "text" | "json";
 			validatePrompt?: (prompt: PromptDefinition) => void;
-			prepareMessages?: (messages: Messages) => void;
+			prepareMessages?: (messages: Messages) => Messages;
 			mapResponse: (
 				response: LLMProviderResponse,
 				base: LLMTextResult,
@@ -269,8 +260,8 @@ export class GuidlioLMService {
 			}
 		}
 
-		const messages = this.promptReg.buildMessages(prompt, params.variables);
-		options.prepareMessages?.(messages);
+		const rawMessages = this.promptReg.buildMessages(prompt, params.variables);
+		const messages = options.prepareMessages ? options.prepareMessages(rawMessages) : rawMessages;
 
 		const providerRequest = this.buildProviderRequest(
 			params,
@@ -332,12 +323,7 @@ export class GuidlioLMService {
 		run: (provider: LLMProvider) => Promise<TResp>,
 		toResult: (response: TResp) => TOut,
 	): Promise<TOut> {
-		const provider = selectProvider(
-			this.providers,
-			model,
-			this.config,
-			this.logger,
-		);
+		const provider = selectProvider(this.providers, model, this.config, this.logger);
 		const ctx: CallContext = {
 			traceId: traceIdParam || this.generateTraceId(),
 			model,
@@ -346,12 +332,7 @@ export class GuidlioLMService {
 		};
 
 		try {
-			const response = await callWithRetries(
-				() => run(provider),
-				this.config,
-				this.logger,
-				ctx,
-			);
+			const response = await callWithRetries(() => run(provider), this.config, this.logger, ctx);
 			logOutcome(this.logger, ctx, { success: true });
 			return toResult(response);
 		} catch (error) {
@@ -370,22 +351,13 @@ export class GuidlioLMService {
 	 * Throws early with a clear message if the prompt does not exist or no model can be resolved.
 	 */
 	private resolveCall(params: LLMTextParams): ResolvedPrompt {
-		const prompt = this.promptReg.getPrompt(
-			params.promptId,
-			params.promptVersion,
-		);
+		const prompt = this.promptReg.getPrompt(params.promptId, params.promptVersion);
 
 		if (!prompt) {
-			throw new Error(
-				`Prompt not found: ${params.promptId}@${params.promptVersion ?? "latest"}`,
-			);
+			throw new Error(`Prompt not found: ${params.promptId}@${params.promptVersion ?? "latest"}`);
 		}
 
-		const model =
-			params.model ||
-			prompt.modelDefaults.model ||
-			this.config.defaultModel ||
-			"";
+		const model = params.model || prompt.modelDefaults.model || this.config.defaultModel || "";
 
 		if (!model) {
 			throw new Error(
@@ -393,12 +365,7 @@ export class GuidlioLMService {
 			);
 		}
 
-		const provider = selectProvider(
-			this.providers,
-			model,
-			this.config,
-			this.logger,
-		);
+		const provider = selectProvider(this.providers, model, this.config, this.logger);
 		return { prompt, model, provider };
 	}
 
@@ -419,7 +386,7 @@ export class GuidlioLMService {
 				params.temperature ??
 				prompt.modelDefaults.temperature ??
 				this.config.defaultTemperature ??
-				0.7,
+				DEFAULT_TEMPERATURE,
 			maxTokens: params.maxTokens ?? prompt.modelDefaults.maxTokens,
 			topP: params.topP ?? prompt.modelDefaults.topP,
 			seed: params.seed,
@@ -450,16 +417,12 @@ export class GuidlioLMService {
 		cacheKey: string,
 		result: unknown,
 	): Promise<void> {
-		if (
-			(params.cache?.mode === "read_through" ||
-				params.cache?.mode === "refresh") &&
-			params.cache.ttlSeconds
-		) {
+		if (params.cache?.mode === "read_through" || params.cache?.mode === "refresh") {
 			await this.cache.set(cacheKey, result, params.cache.ttlSeconds);
 		}
 	}
 
 	private generateTraceId(): string {
-		return `trace_${randomUUID()}`;
+		return randomUUID();
 	}
 }

@@ -33,7 +33,7 @@ describe("callWithRetries", () => {
 		let calls = 0;
 		const fn = vi.fn(async () => {
 			calls++;
-			if (calls < 3) throw new LLMTransientError("t", "p", "m");
+			if (calls < 3) throw new LLMTransientError({ message: "t", provider: "p", model: "m" });
 			return "ok";
 		});
 		const p = callWithRetries(fn, baseConfig, null, baseCtx);
@@ -43,7 +43,7 @@ describe("callWithRetries", () => {
 	});
 
 	it("throws LLMTransientError after maxAttempts exhausted", async () => {
-		const fn = vi.fn(async () => { throw new LLMTransientError("err", "p", "m"); });
+		const fn = vi.fn(async () => { throw new LLMTransientError({ message: "err", provider: "p", model: "m" }); });
 		const rejectPromise = expect(
 			callWithRetries(fn, { ...baseConfig, maxAttempts: 2 }, null, baseCtx)
 		).rejects.toBeInstanceOf(LLMTransientError);
@@ -53,7 +53,7 @@ describe("callWithRetries", () => {
 	});
 
 	it("does NOT retry on LLMPermanentError", async () => {
-		const fn = vi.fn(async () => { throw new LLMPermanentError("perm", "p", "m"); });
+		const fn = vi.fn(async () => { throw new LLMPermanentError({ message: "perm", provider: "p", model: "m" }); });
 		await expect(callWithRetries(fn, baseConfig, null, baseCtx)).rejects.toBeInstanceOf(LLMPermanentError);
 		expect(fn).toHaveBeenCalledOnce();
 	});
@@ -65,7 +65,7 @@ describe("callWithRetries", () => {
 	});
 
 	it("maxAttempts:1 — no retry, throws immediately", async () => {
-		const fn = vi.fn(async () => { throw new LLMTransientError("t", "p", "m"); });
+		const fn = vi.fn(async () => { throw new LLMTransientError({ message: "t", provider: "p", model: "m" }); });
 		await expect(callWithRetries(fn, { ...baseConfig, maxAttempts: 1 }, null, baseCtx)).rejects.toBeInstanceOf(LLMTransientError);
 		expect(fn).toHaveBeenCalledOnce();
 	});
@@ -74,7 +74,7 @@ describe("callWithRetries", () => {
 		let calls = 0;
 		const fn = vi.fn(async () => {
 			calls++;
-			if (calls < 3) throw new LLMTransientError("t", "p", "m");
+			if (calls < 3) throw new LLMTransientError({ message: "t", provider: "p", model: "m" });
 			return "done";
 		});
 		const p = callWithRetries(fn, { ...baseConfig, retryBaseDelayMs: 10_000, maxDelayMs: 50, maxAttempts: 3 }, null, baseCtx);
@@ -88,7 +88,7 @@ describe("callWithRetries", () => {
 		const log = makeMockLogger();
 		const fn = vi.fn(async () => {
 			calls++;
-			if (calls < 3) throw new LLMTransientError("t", "p", "m");
+			if (calls < 3) throw new LLMTransientError({ message: "t", provider: "p", model: "m" });
 			return "ok";
 		});
 		const p = callWithRetries(fn, baseConfig, log, baseCtx);

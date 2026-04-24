@@ -18,19 +18,17 @@ export function parseAndRepairJSON<T>(
 		try {
 			return JSON.parse(repairJSON(text)) as T;
 		} catch (repairError) {
-			throw new LLMParseError(
-				`Failed to parse JSON response: ${
-					repairError instanceof Error
-						? repairError.message
-						: String(repairError)
+			throw new LLMParseError({
+				message: `Failed to parse JSON response: ${
+					repairError instanceof Error ? repairError.message : String(repairError)
 				}`,
-				providerName,
+				provider: providerName,
 				model,
-				text,
+				rawOutput: text,
 				promptId,
 				requestId,
-				parseError instanceof Error ? parseError : undefined,
-			);
+				cause: parseError instanceof Error ? parseError : undefined,
+			});
 		}
 	}
 }
@@ -53,45 +51,44 @@ export function validateSchema<T>(
 		return schema.parse(parsed);
 	} catch (validationError) {
 		if (validationError instanceof z.ZodError) {
-			throw new LLMSchemaError(
-				`Schema validation failed: ${validationError.message}`,
-				providerName,
+			throw new LLMSchemaError({
+				message: `Schema validation failed: ${validationError.message}`,
+				provider: providerName,
 				model,
-				validationError.errors.map(
-					(e) => `${e.path.join(".")}: ${e.message}`,
-				),
+				validationErrors: validationError.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
 				promptId,
 				requestId,
-				validationError,
-			);
+				cause: validationError,
+			});
 		}
 		throw validationError;
 	}
 }
 
+const JSON_INSTRUCTION =
+	"IMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no explanatory text.";
+
 /**
- * Append a JSON-only instruction to the last user message if not already present.
- * Mutates the messages array in place.
+ * Return a new messages array with a JSON-output instruction prepended to the system message
+ * (or a new system message inserted at position 0 if none exists).
+ * Pure — does not mutate the input.
  */
-export function enforceJsonInstruction<
-	M extends { role: string; content: string },
->(messages: M[]): void {
-	if (messages.length === 0) return;
+export function enforceJsonInstruction<M extends { role: string; content: string }>(
+	messages: M[],
+): M[] {
+	if (messages.length === 0) return messages;
 
-	const last = messages[messages.length - 1];
-	if (last.role !== "user") return;
-
-	const alreadyInstructed =
-		last.content.includes("ONLY JSON") ||
-		last.content.includes("valid JSON") ||
-		last.content.includes("JSON format");
-
-	if (!alreadyInstructed) {
-		messages[messages.length - 1] = {
-			...last,
-			content: `${last.content}\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no code fences, no explanatory text.`,
+	const systemIdx = messages.findIndex((m) => m.role === "system");
+	if (systemIdx !== -1) {
+		const updated = [...messages];
+		updated[systemIdx] = {
+			...updated[systemIdx],
+			content: `${updated[systemIdx].content}\n\n${JSON_INSTRUCTION}`,
 		};
+		return updated;
 	}
+
+	return [{ ...messages[0], role: "system", content: JSON_INSTRUCTION } as M, ...messages];
 }
 
 /**
@@ -101,11 +98,7 @@ function parseJSON<T>(text: string): T {
 	try {
 		return JSON.parse(text) as T;
 	} catch (error) {
-		throw new Error(
-			`JSON parse error: ${
-				error instanceof Error ? error.message : String(error)
-			}`,
-		);
+		throw new Error(`JSON parse error: ${error instanceof Error ? error.message : String(error)}`);
 	}
 }
 
@@ -121,11 +114,7 @@ function repairJSON(text: string): string {
 	const firstObj = repaired.indexOf("{");
 	const firstArr = repaired.indexOf("[");
 	const first =
-		firstObj === -1
-			? firstArr
-			: firstArr === -1
-				? firstObj
-				: Math.min(firstObj, firstArr);
+		firstObj === -1 ? firstArr : firstArr === -1 ? firstObj : Math.min(firstObj, firstArr);
 
 	if (first === -1) return repaired.trim();
 
