@@ -1,15 +1,16 @@
 # Example: ReAct Agent Loop (Reason → Act → Observe)
 
-The [ReAct pattern](https://arxiv.org/abs/2210.03629) interleaves *reasoning* (LLM
-decides what to do next) with *acting* (execute a tool). The pipeline loops until
+The [ReAct pattern](https://arxiv.org/abs/2210.03629) interleaves _reasoning_ (LLM
+decides what to do next) with _acting_ (execute a tool). The pipeline loops until
 the LLM signals it has enough information to produce a final answer.
 
 ```
 think ──redirect:use_tool──► act ──redirect:think──► think  (loop)
-      └─redirect:answer────►                         answer ──► (done)
+    └─redirect:answer────►                         answer ──► (done)
 ```
 
 **Concepts covered:**
+
 - `redirect` outcome as a routing signal from a step that doesn't know step names
 - `RedirectRoutingPolicy` — maps `outcome.message` to GOTO targets, no boilerplate
 - `maxTransitions` as the hard safety guard against infinite tool-call loops
@@ -21,12 +22,12 @@ think ──redirect:use_tool──► act ──redirect:think──► think  
 ## Context
 
 ```typescript
-import { BaseContext } from 'guidlio-lm';
+import { BaseContext } from "guidlio-lm";
 
 type ScratchpadEntry =
-  | { role: 'thought';     content: string }
-  | { role: 'tool_call';   name: string; args: Record<string, unknown> }
-  | { role: 'observation'; content: string };
+  | { role: "thought"; content: string }
+  | { role: "tool_call"; name: string; args: Record<string, unknown> }
+  | { role: "observation"; content: string };
 
 interface AgentContext extends BaseContext {
   userQuery: string;
@@ -48,12 +49,12 @@ history on each subsequent `think` call.
 The steps themselves never reference other step names — the route table owns that mapping.
 
 ```typescript
-import { RedirectRoutingPolicy } from 'guidlio-lm';
+import { RedirectRoutingPolicy } from "guidlio-lm";
 
 const agentRoutes = new RedirectRoutingPolicy<AgentContext>({
-  use_tool: 'act',
-  think:    'think',
-  answer:   'answer',
+  use_tool: "act",
+  think: "think",
+  answer: "answer",
 });
 ```
 
@@ -67,14 +68,14 @@ routes surface immediately rather than silently doing nothing.
 ### `think` — LLM decides the next action
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, redirect, failed } from 'guidlio-lm';
+import { PipelineStep, StepResult, StepRunMeta, redirect, failed } from "guidlio-lm";
 
 type LLMDecision =
-  | { type: 'use_tool'; thought: string; tool: { name: string; args: Record<string, unknown> } }
-  | { type: 'answer';   thought: string; answer: string };
+  | { type: "use_tool"; thought: string; tool: { name: string; args: Record<string, unknown> } }
+  | { type: "answer"; thought: string; answer: string };
 
 class ThinkStep extends PipelineStep<AgentContext> {
-  readonly name = 'think';
+  readonly name = "think";
 
   async run(ctx: AgentContext, meta: StepRunMeta): Promise<StepResult<AgentContext>> {
     // meta.attempt tells us how many times we have looped through think already.
@@ -82,7 +83,7 @@ class ThinkStep extends PipelineStep<AgentContext> {
     if (meta.attempt > 8) {
       return failed({
         ctx,
-        error: new Error('Agent exceeded maximum reasoning iterations'),
+        error: new Error("Agent exceeded maximum reasoning iterations"),
         retryable: false,
         statusCode: 422,
       });
@@ -91,9 +92,9 @@ class ThinkStep extends PipelineStep<AgentContext> {
     let decision: LLMDecision;
     try {
       decision = await llm.reason({
-        query:     ctx.userQuery,
+        query: ctx.userQuery,
         scratchpad: ctx.scratchpad,
-        signal:    meta.signal,   // honour caller's AbortSignal inside the LLM call
+        signal: meta.signal, // honour caller's AbortSignal inside the LLM call
       });
     } catch (err) {
       return failed({
@@ -103,16 +104,16 @@ class ThinkStep extends PipelineStep<AgentContext> {
       });
     }
 
-    const thought: ScratchpadEntry = { role: 'thought', content: decision.thought };
+    const thought: ScratchpadEntry = { role: "thought", content: decision.thought };
 
-    if (decision.type === 'use_tool') {
+    if (decision.type === "use_tool") {
       return redirect({
         ctx: {
           ...ctx,
           pendingToolCall: decision.tool,
           scratchpad: [...ctx.scratchpad, thought],
         },
-        message: 'use_tool',
+        message: "use_tool",
       });
     }
 
@@ -123,7 +124,7 @@ class ThinkStep extends PipelineStep<AgentContext> {
         finalAnswer: decision.answer,
         scratchpad: [...ctx.scratchpad, thought],
       },
-      message: 'answer',
+      message: "answer",
     });
   }
 }
@@ -133,11 +134,11 @@ class ThinkStep extends PipelineStep<AgentContext> {
 
 ```typescript
 class ActStep extends PipelineStep<AgentContext> {
-  readonly name = 'act';
+  readonly name = "act";
 
   async run(ctx: AgentContext, meta: StepRunMeta): Promise<StepResult<AgentContext>> {
     if (!ctx.pendingToolCall) {
-      return failed({ ctx, error: new Error('No pending tool call'), retryable: false });
+      return failed({ ctx, error: new Error("No pending tool call"), retryable: false });
     }
 
     const { name, args } = ctx.pendingToolCall;
@@ -157,11 +158,11 @@ class ActStep extends PipelineStep<AgentContext> {
         pendingToolCall: undefined,
         scratchpad: [
           ...ctx.scratchpad,
-          { role: 'tool_call',   name, args },
-          { role: 'observation', content: observation },
+          { role: "tool_call", name, args },
+          { role: "observation", content: observation },
         ],
       },
-      message: 'think', // always loop back to reasoning after acting
+      message: "think", // always loop back to reasoning after acting
     });
   }
 }
@@ -171,7 +172,7 @@ class ActStep extends PipelineStep<AgentContext> {
 
 ```typescript
 class AnswerStep extends PipelineStep<AgentContext> {
-  readonly name = 'answer';
+  readonly name = "answer";
 
   async run(ctx: AgentContext, _meta: StepRunMeta): Promise<StepResult<AgentContext>> {
     // finalAnswer was set by ThinkStep. Return ok so the orchestrator stops.
@@ -185,16 +186,12 @@ class AnswerStep extends PipelineStep<AgentContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from 'guidlio-lm';
+import { GuidlioOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from "guidlio-lm";
 
 const orchestrator = new GuidlioOrchestrator<AgentContext>({
-  steps: [
-    new ThinkStep(),
-    new ActStep(),
-    new AnswerStep(),
-  ],
+  steps: [new ThinkStep(), new ActStep(), new AnswerStep()],
   // RedirectRoutingPolicy is stateless — sharing one instance is safe
-  policy:   agentRoutes,
+  policy: agentRoutes,
   observer: new LoggerPipelineObserver(),
 
   // Safety guard: a ReAct agent with 8 think iterations × 2 steps (think+act)
@@ -209,16 +206,16 @@ const orchestrator = new GuidlioOrchestrator<AgentContext>({
 
 ```typescript
 const result = await orchestrator.run({
-  traceId:    'agent-001',
-  userQuery:  'What is the current weather in Tel Aviv?',
-  scratchpad: [],  // start with empty working memory
+  traceId: "agent-001",
+  userQuery: "What is the current weather in Tel Aviv?",
+  scratchpad: [], // start with empty working memory
 });
 
-if (result.status === 'ok') {
-  console.log('Answer:', result.ctx.finalAnswer);
-  console.log('Steps taken:', result.ctx.scratchpad.length);
+if (result.status === "ok") {
+  console.log("Answer:", result.ctx.finalAnswer);
+  console.log("Steps taken:", result.ctx.scratchpad.length);
 } else {
-  console.error('Agent failed:', result.error.message);
+  console.error("Agent failed:", result.error.message);
   // Check result.error.statusCode === 422 for "exceeded iterations"
 }
 ```
@@ -242,10 +239,10 @@ answer             → next               → (pipeline ends, status: ok)
 
 Two independent guards prevent infinite loops:
 
-| Guard | Where | What it catches |
-|---|---|---|
-| `meta.attempt > N` check in `ThinkStep` | Inside the step | LLM looping without progress |
-| `maxTransitions` on the orchestrator | Orchestrator loop | Any transition cycle |
+| Guard                                   | Where             | What it catches              |
+| --------------------------------------- | ----------------- | ---------------------------- |
+| `meta.attempt > N` check in `ThinkStep` | Inside the step   | LLM looping without progress |
+| `maxTransitions` on the orchestrator    | Orchestrator loop | Any transition cycle         |
 
 The step-level guard produces a clean `failed` result with a meaningful message.
 The orchestrator guard throws `PipelineDefinitionError` which propagates uncaught —

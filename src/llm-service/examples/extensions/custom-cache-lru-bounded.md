@@ -16,97 +16,97 @@ The built-in `InMemoryCacheProvider` grows without bound — in a long-running s
 import type { CacheProvider } from "guidlio-lm";
 
 interface CacheEntry<T> {
-	value: T;
-	// Handle returned by setTimeout so we can cancel on delete/clear
-	expiryTimer: ReturnType<typeof setTimeout> | null;
+  value: T;
+  // Handle returned by setTimeout so we can cancel on delete/clear
+  expiryTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface LruCacheProviderOptions {
-	// Maximum number of entries to hold simultaneously. When the limit is reached,
-	// the least recently used entry is evicted to make room for the new one.
-	maxEntries?: number;
+  // Maximum number of entries to hold simultaneously. When the limit is reached,
+  // the least recently used entry is evicted to make room for the new one.
+  maxEntries?: number;
 }
 
 export class LruCacheProvider implements CacheProvider {
-	private readonly maxEntries: number;
+  private readonly maxEntries: number;
 
-	// Map preserves insertion order. Entries are moved to the end on access,
-	// so the oldest (least recently used) entry is always at the front.
-	private store = new Map<string, CacheEntry<unknown>>();
+  // Map preserves insertion order. Entries are moved to the end on access,
+  // so the oldest (least recently used) entry is always at the front.
+  private store = new Map<string, CacheEntry<unknown>>();
 
-	constructor({ maxEntries = 500 }: LruCacheProviderOptions = {}) {
-		if (maxEntries < 1) throw new RangeError("maxEntries must be >= 1");
-		this.maxEntries = maxEntries;
-	}
+  constructor({ maxEntries = 500 }: LruCacheProviderOptions = {}) {
+    if (maxEntries < 1) throw new RangeError("maxEntries must be >= 1");
+    this.maxEntries = maxEntries;
+  }
 
-	async get<T>(key: string): Promise<T | null> {
-		const entry = this.store.get(key);
-		if (!entry) return null;
+  async get<T>(key: string): Promise<T | null> {
+    const entry = this.store.get(key);
+    if (!entry) return null;
 
-		// Move to end of Map to mark as most recently used
-		this.store.delete(key);
-		this.store.set(key, entry as CacheEntry<unknown>);
+    // Move to end of Map to mark as most recently used
+    this.store.delete(key);
+    this.store.set(key, entry as CacheEntry<unknown>);
 
-		return entry.value as T;
-	}
+    return entry.value as T;
+  }
 
-	async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-		// If the key already exists, remove it so we can re-insert at the end (most recent)
-		const existing = this.store.get(key);
-		if (existing) {
-			if (existing.expiryTimer !== null) clearTimeout(existing.expiryTimer);
-			this.store.delete(key);
-		}
+  async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    // If the key already exists, remove it so we can re-insert at the end (most recent)
+    const existing = this.store.get(key);
+    if (existing) {
+      if (existing.expiryTimer !== null) clearTimeout(existing.expiryTimer);
+      this.store.delete(key);
+    }
 
-		// Evict the oldest entry when the store is at capacity
-		if (this.store.size >= this.maxEntries) {
-			// Map iterator visits keys in insertion order — first key is the oldest
-			const oldestKey = this.store.keys().next().value;
-			if (oldestKey !== undefined) {
-				const oldest = this.store.get(oldestKey);
-				if (oldest?.expiryTimer !== null && oldest?.expiryTimer !== undefined) {
-					clearTimeout(oldest.expiryTimer);
-				}
-				this.store.delete(oldestKey);
-			}
-		}
+    // Evict the oldest entry when the store is at capacity
+    if (this.store.size >= this.maxEntries) {
+      // Map iterator visits keys in insertion order — first key is the oldest
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey !== undefined) {
+        const oldest = this.store.get(oldestKey);
+        if (oldest?.expiryTimer !== null && oldest?.expiryTimer !== undefined) {
+          clearTimeout(oldest.expiryTimer);
+        }
+        this.store.delete(oldestKey);
+      }
+    }
 
-		let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 
-		if (ttlSeconds !== undefined && ttlSeconds > 0) {
-			// Schedule automatic eviction. unref() prevents the timer from keeping the
-			// Node.js event loop alive when the process is otherwise idle.
-			expiryTimer = setTimeout(() => {
-				this.store.delete(key);
-			}, ttlSeconds * 1000);
+    if (ttlSeconds !== undefined && ttlSeconds > 0) {
+      // Schedule automatic eviction. unref() prevents the timer from keeping the
+      // Node.js event loop alive when the process is otherwise idle.
+      expiryTimer = setTimeout(() => {
+        this.store.delete(key);
+      }, ttlSeconds * 1000);
 
-			if (typeof expiryTimer === "object" && "unref" in expiryTimer) {
-				(expiryTimer as { unref(): void }).unref();
-			}
-		}
+      if (typeof expiryTimer === "object" && "unref" in expiryTimer) {
+        (expiryTimer as { unref(): void }).unref();
+      }
+    }
 
-		this.store.set(key, { value, expiryTimer });
-	}
+    this.store.set(key, { value, expiryTimer });
+  }
 
-	async delete(key: string): Promise<void> {
-		const entry = this.store.get(key);
-		if (entry) {
-			if (entry.expiryTimer !== null) clearTimeout(entry.expiryTimer);
-			this.store.delete(key);
-		}
-	}
+  async delete(key: string): Promise<void> {
+    const entry = this.store.get(key);
+    if (entry) {
+      if (entry.expiryTimer !== null) clearTimeout(entry.expiryTimer);
+      this.store.delete(key);
+    }
+  }
 
-	async clear(): Promise<void> {
-		for (const entry of this.store.values()) {
-			if (entry.expiryTimer !== null) clearTimeout(entry.expiryTimer);
-		}
-		this.store.clear();
-	}
+  async clear(): Promise<void> {
+    for (const entry of this.store.values()) {
+      if (entry.expiryTimer !== null) clearTimeout(entry.expiryTimer);
+    }
+    this.store.clear();
+  }
 
-	// Useful for monitoring and tests
-	get size(): number {
-		return this.store.size;
-	}
+  // Useful for monitoring and tests
+  get size(): number {
+    return this.store.size;
+  }
 }
 ```
 
@@ -118,31 +118,31 @@ import { LruCacheProvider } from "./LruCacheProvider";
 
 const registry = new PromptRegistry();
 registry.register({
-	promptId: "tag",
-	version: 1,
-	systemPrompt: "Return a comma-separated list of topic tags for the text.",
-	userPrompt: "{text}",
-	modelDefaults: { model: "gpt-4o-mini", temperature: 0 },
-	output: { type: "text" },
+  promptId: "tag",
+  version: 1,
+  systemPrompt: "Return a comma-separated list of topic tags for the text.",
+  userPrompt: "{text}",
+  modelDefaults: { model: "gpt-4o-mini", temperature: 0 },
+  output: { type: "text" },
 });
 
 // Hold at most 1000 unique prompt results in memory; evict oldest on overflow
 const cacheProvider = new LruCacheProvider({ maxEntries: 1000 });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	cacheProvider,
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  cacheProvider,
+  promptRegistry: registry,
 });
 
 // The cache never grows beyond 1000 entries regardless of how many unique texts are processed
 for (const article of articles) {
-	const result = await llm.callText({
-		promptId: "tag",
-		variables: { text: article },
-		cache: { mode: "read_through", ttlSeconds: 3600 },
-	});
-	console.log(result.text);
+  const result = await llm.callText({
+    promptId: "tag",
+    variables: { text: article },
+    cache: { mode: "read_through", ttlSeconds: 3600 },
+  });
+  console.log(result.text);
 }
 
 console.log(`Cache size: ${cacheProvider.size}`); // <= 1000

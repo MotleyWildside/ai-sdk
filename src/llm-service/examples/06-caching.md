@@ -4,11 +4,11 @@ The service has a built-in read-through / refresh cache. The default provider is
 
 ## Cache modes
 
-| Mode | Reads cache? | Writes cache? | Use case |
-| :--- | :--- | :--- | :--- |
-| `"read_through"` | Yes | Yes (on miss) | Normal caching — avoids duplicate API calls |
-| `"refresh"` | No | Yes | Force-update a stale entry while keeping it hot for future callers |
-| `"bypass"` | No | No | Always call the provider; useful for sensitive or unique requests |
+| Mode             | Reads cache? | Writes cache? | Use case                                                           |
+| :--------------- | :----------- | :------------ | :----------------------------------------------------------------- |
+| `"read_through"` | Yes          | Yes (on miss) | Normal caching — avoids duplicate API calls                        |
+| `"refresh"`      | No           | Yes           | Force-update a stale entry while keeping it hot for future callers |
+| `"bypass"`       | No           | No            | Always call the provider; useful for sensitive or unique requests  |
 
 Cache is only written when `ttlSeconds` is also set. Without a TTL the entry never expires.
 
@@ -18,22 +18,22 @@ Cache is only written when `ttlSeconds` is also set. Without a TTL the entry nev
 import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: registry,
 });
 
 // First call: miss → calls provider → stores result for 1 hour
 const first = await llm.callText({
-	promptId: "summarize",
-	variables: { text },
-	cache: { mode: "read_through", ttlSeconds: 3600 },
+  promptId: "summarize",
+  variables: { text },
+  cache: { mode: "read_through", ttlSeconds: 3600 },
 });
 
 // Second call with identical params: hit → no provider call
 const second = await llm.callText({
-	promptId: "summarize",
-	variables: { text },
-	cache: { mode: "read_through", ttlSeconds: 3600 },
+  promptId: "summarize",
+  variables: { text },
+  cache: { mode: "read_through", ttlSeconds: 3600 },
 });
 
 console.log(second.durationMs); // near zero — served from cache
@@ -45,10 +45,10 @@ By default the cache key is a hash of `promptId + version + variables + resolved
 
 ```typescript
 await llm.callText({
-	promptId: "summarize",
-	variables: { text },
-	idempotencyKey: `article:${articleId}`,
-	cache: { mode: "read_through", ttlSeconds: 86400 },
+  promptId: "summarize",
+  variables: { text },
+  idempotencyKey: `article:${articleId}`,
+  cache: { mode: "read_through", ttlSeconds: 86400 },
 });
 ```
 
@@ -57,10 +57,10 @@ await llm.callText({
 ```typescript
 // Re-run the prompt and update the cached value — callers after this see the fresh result
 await llm.callText({
-	promptId: "summarize",
-	variables: { text: updatedText },
-	idempotencyKey: `article:${articleId}`,
-	cache: { mode: "refresh", ttlSeconds: 86400 },
+  promptId: "summarize",
+  variables: { text: updatedText },
+  idempotencyKey: `article:${articleId}`,
+  cache: { mode: "refresh", ttlSeconds: 86400 },
 });
 ```
 
@@ -70,9 +70,9 @@ Set `enableCache: false` in the service config to disable reads and writes regar
 
 ```typescript
 const llm = new GuidlioLMService({
-	providers: [...],
-	enableCache: false,
-	promptRegistry: registry,
+  providers: [...],
+  enableCache: false,
+  promptRegistry: registry,
 });
 ```
 
@@ -85,31 +85,31 @@ import type { CacheProvider } from "guidlio-lm";
 import { createClient } from "redis";
 
 class RedisCacheProvider implements CacheProvider {
-	private client = createClient({ url: process.env.REDIS_URL });
+  private client = createClient({ url: process.env.REDIS_URL });
 
-	async get<T>(key: string): Promise<T | null> {
-		const raw = await this.client.get(key);
-		return raw ? (JSON.parse(raw) as T) : null;
-	}
+  async get<T>(key: string): Promise<T | null> {
+  const raw = await this.client.get(key);
+  return raw ? (JSON.parse(raw) as T) : null;
+  }
 
-	async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-		const opts = ttlSeconds ? { EX: ttlSeconds } : undefined;
-		await this.client.set(key, JSON.stringify(value), opts);
-	}
+  async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+  const opts = ttlSeconds ? { EX: ttlSeconds } : undefined;
+  await this.client.set(key, JSON.stringify(value), opts);
+  }
 
-	async delete(key: string): Promise<void> {
-		await this.client.del(key);
-	}
+  async delete(key: string): Promise<void> {
+  await this.client.del(key);
+  }
 
-	async clear(): Promise<void> {
-		await this.client.flushDb();
-	}
+  async clear(): Promise<void> {
+  await this.client.flushDb();
+  }
 }
 
 const llm = new GuidlioLMService({
-	providers: [...],
-	cacheProvider: new RedisCacheProvider(),
-	promptRegistry: registry,
+  providers: [...],
+  cacheProvider: new RedisCacheProvider(),
+  promptRegistry: registry,
 });
 ```
 

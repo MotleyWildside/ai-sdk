@@ -8,6 +8,7 @@ selectively intercept one step's `ok` outcome while delegating everything else t
 `super.decide()`.
 
 **Concepts covered:**
+
 - `decide()` override returning `Promise<PolicyDecisionOutput<C>>`
 - Awaiting an external flag service inside the policy
 - Degrading the run when the flag is disabled for a specific user
@@ -26,7 +27,7 @@ Unleash, CloudBees, a homemade HTTP client) fits as long as it exposes an
 // flags.ts
 
 export interface FeatureFlagService {
-	isEnabled(flag: string, userId: string): Promise<boolean>;
+  isEnabled(flag: string, userId: string): Promise<boolean>;
 }
 ```
 
@@ -38,10 +39,10 @@ export interface FeatureFlagService {
 import { BaseContext } from "guidlio-lm";
 
 interface IngestionContext extends BaseContext {
-	userId: string;
-	documentId: string;
-	parsedContent?: string;
-	enrichedMetadata?: Record<string, unknown>;
+  userId: string;
+  documentId: string;
+  parsedContent?: string;
+  enrichedMetadata?: Record<string, unknown>;
 }
 ```
 
@@ -56,48 +57,40 @@ enrichment step. For everything else — other steps, `failed` outcomes, `redire
 outcomes — it delegates to `super.decide()`.
 
 ```typescript
-import {
-	DefaultPolicy,
-	PolicyDecisionInput,
-	PolicyDecisionOutput,
-	BaseContext,
-} from "guidlio-lm";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "guidlio-lm";
 import { FeatureFlagService } from "./flags";
 
 class FeatureFlagPolicy extends DefaultPolicy<IngestionContext> {
-	private readonly flags: FeatureFlagService;
+  private readonly flags: FeatureFlagService;
 
-	constructor(flags: FeatureFlagService) {
-		super();
-		this.flags = flags;
-	}
+  constructor(flags: FeatureFlagService) {
+    super();
+    this.flags = flags;
+  }
 
-	override async decide(
-		input: PolicyDecisionInput<IngestionContext>,
-	): Promise<PolicyDecisionOutput<IngestionContext>> {
-		const { stepName, stepResult } = input;
+  override async decide(
+    input: PolicyDecisionInput<IngestionContext>,
+  ): Promise<PolicyDecisionOutput<IngestionContext>> {
+    const { stepName, stepResult } = input;
 
-		// Only intercept the "parse" step on a successful outcome
-		if (stepName === "parse" && stepResult.outcome.type === "ok") {
-			const enabled = await this.flags.isEnabled(
-				"new-enrichment-flow",
-				stepResult.ctx.userId,
-			);
+    // Only intercept the "parse" step on a successful outcome
+    if (stepName === "parse" && stepResult.outcome.type === "ok") {
+      const enabled = await this.flags.isEnabled("new-enrichment-flow", stepResult.ctx.userId);
 
-			if (!enabled) {
-				// Skip the enrichment step entirely for this user
-				return {
-					transition: {
-						type: "degrade",
-						reason: "new-enrichment-flow disabled for this user",
-					},
-				};
-			}
-		}
+      if (!enabled) {
+        // Skip the enrichment step entirely for this user
+        return {
+          transition: {
+            type: "degrade",
+            reason: "new-enrichment-flow disabled for this user",
+          },
+        };
+      }
+    }
 
-		// All other steps and outcomes: default behaviour (ok → next, failed → fail, etc.)
-		return super.decide(input);
-	}
+    // All other steps and outcomes: default behaviour (ok → next, failed → fail, etc.)
+    return super.decide(input);
+  }
 }
 ```
 
@@ -113,40 +106,40 @@ async overrides satisfy it — you do not need a wrapper.
 import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
 
 class ParseStep extends PipelineStep<IngestionContext> {
-	readonly name = "parse";
+  readonly name = "parse";
 
-	async run(ctx: IngestionContext, meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
-		try {
-			const parsedContent = await parser.parse(ctx.documentId, { signal: meta.signal });
-			return ok({ ctx: { ...ctx, parsedContent } });
-		} catch (err) {
-			return failed({
-				ctx,
-				error: err instanceof Error ? err : new Error(String(err)),
-				retryable: true,
-			});
-		}
-	}
+  async run(ctx: IngestionContext, meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
+    try {
+      const parsedContent = await parser.parse(ctx.documentId, { signal: meta.signal });
+      return ok({ ctx: { ...ctx, parsedContent } });
+    } catch (err) {
+      return failed({
+        ctx,
+        error: err instanceof Error ? err : new Error(String(err)),
+        retryable: true,
+      });
+    }
+  }
 }
 
 class EnrichStep extends PipelineStep<IngestionContext> {
-	readonly name = "enrich";
+  readonly name = "enrich";
 
-	async run(ctx: IngestionContext, meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
-		const enrichedMetadata = await enricher.run(ctx.parsedContent ?? "", {
-			signal: meta.signal,
-		});
-		return ok({ ctx: { ...ctx, enrichedMetadata } });
-	}
+  async run(ctx: IngestionContext, meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
+    const enrichedMetadata = await enricher.run(ctx.parsedContent ?? "", {
+      signal: meta.signal,
+    });
+    return ok({ ctx: { ...ctx, enrichedMetadata } });
+  }
 }
 
 class StoreStep extends PipelineStep<IngestionContext> {
-	readonly name = "store";
+  readonly name = "store";
 
-	async run(ctx: IngestionContext, _meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
-		await storage.save(ctx.documentId, ctx.parsedContent, ctx.enrichedMetadata);
-		return ok({ ctx });
-	}
+  async run(ctx: IngestionContext, _meta: StepRunMeta): Promise<StepResult<IngestionContext>> {
+    await storage.save(ctx.documentId, ctx.parsedContent, ctx.enrichedMetadata);
+    return ok({ ctx });
+  }
 }
 ```
 
@@ -165,8 +158,8 @@ import { launchDarklyClient } from "./flags";
 const flagPolicy = new FeatureFlagPolicy(launchDarklyClient);
 
 const orchestrator = new GuidlioOrchestrator<IngestionContext>({
-	steps: [new ParseStep(), new EnrichStep(), new StoreStep()],
-	policy: flagPolicy,
+  steps: [new ParseStep(), new EnrichStep(), new StoreStep()],
+  policy: flagPolicy,
 });
 ```
 
@@ -177,24 +170,24 @@ const orchestrator = new GuidlioOrchestrator<IngestionContext>({
 ```typescript
 // User with the flag enabled — runs the full pipeline
 const enabled = await orchestrator.run({
-	traceId: "ingest-001",
-	userId: "user-beta-42",
-	documentId: "doc-X",
+  traceId: "ingest-001",
+  userId: "user-beta-42",
+  documentId: "doc-X",
 });
 if (enabled.status === "ok" && !enabled.degraded) {
-	console.log("Enriched metadata:", enabled.ctx.enrichedMetadata);
+  console.log("Enriched metadata:", enabled.ctx.enrichedMetadata);
 }
 
 // User without the flag — pipeline degrades after parse, skipping enrich
 const disabled = await orchestrator.run({
-	traceId: "ingest-002",
-	userId: "user-stable-99",
-	documentId: "doc-Y",
+  traceId: "ingest-002",
+  userId: "user-stable-99",
+  documentId: "doc-Y",
 });
 if (disabled.status === "ok" && disabled.degraded) {
-	console.log("Degraded:", disabled.degraded.reason);
-	// "new-enrichment-flow disabled for this user"
-	// ctx.parsedContent is available; ctx.enrichedMetadata is undefined
+  console.log("Degraded:", disabled.degraded.reason);
+  // "new-enrichment-flow disabled for this user"
+  // ctx.parsedContent is available; ctx.enrichedMetadata is undefined
 }
 ```
 
@@ -208,21 +201,21 @@ lookup non-fatal, catch it and default to the safe path:
 
 ```typescript
 override async decide(
-	input: PolicyDecisionInput<IngestionContext>,
+  input: PolicyDecisionInput<IngestionContext>,
 ): Promise<PolicyDecisionOutput<IngestionContext>> {
-	if (input.stepName === "parse" && input.stepResult.outcome.type === "ok") {
-		let enabled = false;
-		try {
-			enabled = await this.flags.isEnabled("new-enrichment-flow", input.stepResult.ctx.userId);
-		} catch {
-			// Flag service unavailable — default to disabled (safe path)
-			enabled = false;
-		}
-		if (!enabled) {
-			return { transition: { type: "degrade", reason: "new-enrichment-flow disabled" } };
-		}
-	}
-	return super.decide(input);
+  if (input.stepName === "parse" && input.stepResult.outcome.type === "ok") {
+  let enabled = false;
+  try {
+    enabled = await this.flags.isEnabled("new-enrichment-flow", input.stepResult.ctx.userId);
+  } catch {
+    // Flag service unavailable — default to disabled (safe path)
+    enabled = false;
+  }
+  if (!enabled) {
+    return { transition: { type: "degrade", reason: "new-enrichment-flow disabled" } };
+  }
+  }
+  return super.decide(input);
 }
 ```
 

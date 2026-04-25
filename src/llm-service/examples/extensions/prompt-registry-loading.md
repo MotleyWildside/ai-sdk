@@ -45,36 +45,36 @@ import type { PromptDefinition } from "guidlio-lm";
 
 // JSON-parsed definitions lack the Zod schema instance — attach them in code
 const ClassifyOutputSchema = z.object({
-	intent: z.string(),
-	confidence: z.number(),
+  intent: z.string(),
+  confidence: z.number(),
 });
 
 // Read and parse the file synchronously at module load time.
 // If the file is missing or malformed the process fails immediately with a clear error.
 const rawDefinitions = JSON.parse(
-	readFileSync(new URL("./prompts.json", import.meta.url), "utf-8"),
+  readFileSync(new URL("./prompts.json", import.meta.url), "utf-8"),
 ) as Array<Omit<PromptDefinition, "output"> & { output?: { type: string } }>;
 
 const registry = new PromptRegistry();
 
 for (const def of rawDefinitions) {
-	if (def.promptId === "classify") {
-		// Attach the Zod schema that cannot be expressed in JSON
-		registry.register({
-			...def,
-			output: { type: "json", schema: ClassifyOutputSchema },
-		} as PromptDefinition);
-	} else {
-		registry.register({
-			...def,
-			output: { type: "text" },
-		} as PromptDefinition);
-	}
+  if (def.promptId === "classify") {
+    // Attach the Zod schema that cannot be expressed in JSON
+    registry.register({
+      ...def,
+      output: { type: "json", schema: ClassifyOutputSchema },
+    } as PromptDefinition);
+  } else {
+    registry.register({
+      ...def,
+      output: { type: "text" },
+    } as PromptDefinition);
+  }
 }
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: registry,
 });
 ```
 
@@ -93,42 +93,42 @@ const SentimentSchema = z.object({ sentiment: z.enum(["positive", "negative", "n
 
 // Schema map: keyed by promptId, values are Zod schemas to attach after fetch
 const schemaMap: Record<string, z.ZodSchema<unknown>> = {
-	"sentiment-analysis": SentimentSchema,
+  "sentiment-analysis": SentimentSchema,
 };
 
 async function loadRegistryFromApi(apiUrl: string): Promise<PromptRegistry> {
-	const response = await fetch(`${apiUrl}/prompts`);
+  const response = await fetch(`${apiUrl}/prompts`);
 
-	if (!response.ok) {
-		throw new Error(`Failed to load prompts from API: HTTP ${response.status}`);
-	}
+  if (!response.ok) {
+    throw new Error(`Failed to load prompts from API: HTTP ${response.status}`);
+  }
 
-	const definitions = (await response.json()) as Array<
-		Omit<PromptDefinition, "output"> & { output: { type: string } }
-	>;
+  const definitions = (await response.json()) as Array<
+    Omit<PromptDefinition, "output"> & { output: { type: string } }
+  >;
 
-	const registry = new PromptRegistry();
+  const registry = new PromptRegistry();
 
-	for (const def of definitions) {
-		const schema = schemaMap[def.promptId];
-		registry.register({
-			...def,
-			output: {
-				type: def.output.type as "text" | "json",
-				schema,
-			},
-		} as PromptDefinition);
-	}
+  for (const def of definitions) {
+    const schema = schemaMap[def.promptId];
+    registry.register({
+      ...def,
+      output: {
+        type: def.output.type as "text" | "json",
+        schema,
+      },
+    } as PromptDefinition);
+  }
 
-	return registry;
+  return registry;
 }
 
 // Await at startup — the service is not constructed until prompts are loaded
 const registry = await loadRegistryFromApi(process.env.PROMPTS_API_URL!);
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: registry,
 });
 ```
 
@@ -142,40 +142,40 @@ import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 import type { PromptDefinition } from "guidlio-lm";
 
 const schemaMap: Record<string, z.ZodSchema<unknown>> = {
-	"classify-ticket": z.object({
-		category: z.string(),
-		priority: z.enum(["low", "medium", "high"]),
-	}),
+  "classify-ticket": z.object({
+    category: z.string(),
+    priority: z.enum(["low", "medium", "high"]),
+  }),
 };
 
 // Module-level registry — replaced atomically by the reload loop
 let activeRegistry: PromptRegistry = new PromptRegistry();
 
 export function getRegistry(): PromptRegistry {
-	return activeRegistry;
+  return activeRegistry;
 }
 
 async function fetchAndBuildRegistry(): Promise<PromptRegistry> {
-	const response = await fetch(`${process.env.PROMPTS_API_URL}/prompts`);
-	if (!response.ok) throw new Error(`Prompt reload failed: HTTP ${response.status}`);
+  const response = await fetch(`${process.env.PROMPTS_API_URL}/prompts`);
+  if (!response.ok) throw new Error(`Prompt reload failed: HTTP ${response.status}`);
 
-	const definitions = (await response.json()) as Array<
-		Omit<PromptDefinition, "output"> & { output: { type: string } }
-	>;
+  const definitions = (await response.json()) as Array<
+    Omit<PromptDefinition, "output"> & { output: { type: string } }
+  >;
 
-	const registry = new PromptRegistry();
+  const registry = new PromptRegistry();
 
-	for (const def of definitions) {
-		registry.register({
-			...def,
-			output: {
-				type: def.output.type as "text" | "json",
-				schema: schemaMap[def.promptId],
-			},
-		} as PromptDefinition);
-	}
+  for (const def of definitions) {
+    registry.register({
+      ...def,
+      output: {
+        type: def.output.type as "text" | "json",
+        schema: schemaMap[def.promptId],
+      },
+    } as PromptDefinition);
+  }
 
-	return registry;
+  return registry;
 }
 
 // Perform the initial load before the service starts accepting requests
@@ -186,18 +186,18 @@ activeRegistry = await fetchAndBuildRegistry();
 // no partial state is ever visible to concurrent requests.
 const RELOAD_INTERVAL_MS = 5 * 60 * 1000;
 const reloadTimer = setInterval(async () => {
-	try {
-		const fresh = await fetchAndBuildRegistry();
-		activeRegistry = fresh;
-	} catch (err) {
-		// Log and keep the last known good registry rather than clearing it
-		console.error("Prompt reload failed — keeping previous registry", err);
-	}
+  try {
+    const fresh = await fetchAndBuildRegistry();
+    activeRegistry = fresh;
+  } catch (err) {
+    // Log and keep the last known good registry rather than clearing it
+    console.error("Prompt reload failed — keeping previous registry", err);
+  }
 }, RELOAD_INTERVAL_MS);
 
 // Prevent the timer from keeping the process alive after shutdown
 if (typeof reloadTimer === "object" && "unref" in reloadTimer) {
-	(reloadTimer as { unref(): void }).unref();
+  (reloadTimer as { unref(): void }).unref();
 }
 ```
 
@@ -210,16 +210,16 @@ import { getRegistry } from "./promptLoader";
 
 // The service itself holds no registry reference — it receives one each call
 function makeLlmService() {
-	return new GuidlioLMService({
-		providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-		promptRegistry: getRegistry(), // called at construction time
-	});
+  return new GuidlioLMService({
+    providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+    promptRegistry: getRegistry(), // called at construction time
+  });
 }
 
 // Re-create the service on each hot-reload cycle, or use a proxy pattern:
 export function getLlmService(): GuidlioLMService {
-	// For simplicity, construct fresh on each call — GuidlioLMService is cheap to construct
-	return makeLlmService();
+  // For simplicity, construct fresh on each call — GuidlioLMService is cheap to construct
+  return makeLlmService();
 }
 ```
 
@@ -232,24 +232,24 @@ import { getRegistry } from "./promptLoader";
 
 // A thin proxy that forwards all calls to the current active registry
 class RegistryProxy extends PromptRegistry {
-	register(def: PromptDefinition): void {
-		getRegistry().register(def);
-	}
-	getPrompt(promptId: string, version?: string | number): PromptDefinition | undefined {
-		return getRegistry().getPrompt(promptId, version);
-	}
-	getAllPrompts(): PromptDefinition[] {
-		return getRegistry().getAllPrompts();
-	}
-	clear(): void {
-		getRegistry().clear();
-	}
+  register(def: PromptDefinition): void {
+    getRegistry().register(def);
+  }
+  getPrompt(promptId: string, version?: string | number): PromptDefinition | undefined {
+    return getRegistry().getPrompt(promptId, version);
+  }
+  getAllPrompts(): PromptDefinition[] {
+    return getRegistry().getAllPrompts();
+  }
+  clear(): void {
+    getRegistry().clear();
+  }
 }
 
 // Construct once — every LLM call transparently uses the latest loaded registry
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: new RegistryProxy(),
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: new RegistryProxy(),
 });
 ```
 

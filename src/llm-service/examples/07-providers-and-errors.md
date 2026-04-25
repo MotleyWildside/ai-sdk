@@ -5,19 +5,14 @@
 Register providers once; the service selects one per-call based on model-name prefix.
 
 ```typescript
-import {
-	GuidlioLMService,
-	OpenAIProvider,
-	GeminiProvider,
-	OpenRouterProvider,
-} from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, GeminiProvider, OpenRouterProvider } from "guidlio-lm";
 
 const llm = new GuidlioLMService({
-	providers: [
-		new OpenAIProvider(process.env.OPENAI_API_KEY!),
-		new GeminiProvider(process.env.GEMINI_API_KEY!),
-		new OpenRouterProvider(process.env.OPENROUTER_API_KEY!),
-	],
+  providers: [
+    new OpenAIProvider(process.env.OPENAI_API_KEY!),
+    new GeminiProvider(process.env.GEMINI_API_KEY!),
+    new OpenRouterProvider(process.env.OPENROUTER_API_KEY!),
+  ],
 });
 
 // Routes to OpenAI (prefix "gpt-")
@@ -36,11 +31,11 @@ await llm.callText({ promptId: "p", model: "anthropic/claude-3-5-sonnet", variab
 
 ```typescript
 const llm = new GuidlioLMService({
-	providers: [
-		new OpenAIProvider(process.env.OPENAI_API_KEY!),
-		new GeminiProvider(process.env.GEMINI_API_KEY!),
-	],
-	defaultProvider: "gemini",  // provider.name must match exactly
+  providers: [
+    new OpenAIProvider(process.env.OPENAI_API_KEY!),
+    new GeminiProvider(process.env.GEMINI_API_KEY!),
+  ],
+  defaultProvider: "gemini", // provider.name must match exactly
 });
 ```
 
@@ -50,8 +45,8 @@ By default, if no provider's `supportsModel` matches, the service falls back to 
 
 ```typescript
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	strictProviderSelection: true,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  strictProviderSelection: true,
 });
 
 // Throws: "No registered provider supports model "gemini-2.0-flash""
@@ -64,11 +59,11 @@ Only `LLMTransientError` (429s, 5xx, timeouts) is retried. All other errors prop
 
 ```typescript
 const llm = new GuidlioLMService({
-	providers: [...],
-	maxAttempts: 5,            // 1 original + 4 retries (default: 3)
-	retryBaseDelayMs: 500,     // base for exponential backoff (default: 1000 ms)
-	maxDelayMs: 20_000,        // cap per-retry delay incl. jitter (default: 30 000 ms)
-	promptRegistry: registry,
+  providers: [...],
+  maxAttempts: 5,            // 1 original + 4 retries (default: 3)
+  retryBaseDelayMs: 500,     // base for exponential backoff (default: 1000 ms)
+  maxDelayMs: 20_000,        // cap per-retry delay incl. jitter (default: 30 000 ms)
+  promptRegistry: registry,
 });
 ```
 
@@ -79,31 +74,26 @@ Delay for attempt `n` (0-indexed): `min(baseDelay × 2^n + rand(0, 1000), maxDel
 All errors extend `LLMError` and carry `provider`, `model`, `promptId?`, `requestId?`, and `cause`.
 
 ```typescript
-import {
-	LLMTransientError,
-	LLMPermanentError,
-	LLMParseError,
-	LLMSchemaError,
-} from "guidlio-lm";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "guidlio-lm";
 
 try {
-	const result = await llm.callJSON({ promptId: "sentiment", variables: { text } });
+  const result = await llm.callJSON({ promptId: "sentiment", variables: { text } });
 } catch (err) {
-	if (err instanceof LLMTransientError) {
-		// Retries exhausted — 429 or repeated 5xx
-		console.error("Transient failure after all retries", err.statusCode);
-	} else if (err instanceof LLMPermanentError) {
-		// 4xx auth / quota / invalid request — do not retry
-		console.error("Permanent failure", err.statusCode, err.message);
-	} else if (err instanceof LLMParseError) {
-		// Model returned prose that couldn't be repaired into JSON
-		console.error("Parse failed. Raw output:", err.rawOutput.slice(0, 200));
-	} else if (err instanceof LLMSchemaError) {
-		// Parsed but Zod validation failed
-		console.error("Schema mismatch:", err.validationErrors);
-	} else {
-		throw err; // unexpected — re-throw
-	}
+  if (err instanceof LLMTransientError) {
+    // Retries exhausted — 429 or repeated 5xx
+    console.error("Transient failure after all retries", err.statusCode);
+  } else if (err instanceof LLMPermanentError) {
+    // 4xx auth / quota / invalid request — do not retry
+    console.error("Permanent failure", err.statusCode, err.message);
+  } else if (err instanceof LLMParseError) {
+    // Model returned prose that couldn't be repaired into JSON
+    console.error("Parse failed. Raw output:", err.rawOutput.slice(0, 200));
+  } else if (err instanceof LLMSchemaError) {
+    // Parsed but Zod validation failed
+    console.error("Schema mismatch:", err.validationErrors);
+  } else {
+    throw err; // unexpected — re-throw
+  }
 }
 ```
 
@@ -118,9 +108,9 @@ const controller = new AbortController();
 req.on("close", () => controller.abort());
 
 const result = await llm.callText({
-	promptId: "summarize",
-	variables: { text },
-	signal: controller.signal,
+  promptId: "summarize",
+  variables: { text },
+  signal: controller.signal,
 });
 ```
 
@@ -128,8 +118,8 @@ For parallel calls, share the same controller:
 
 ```typescript
 const [summary, tags] = await Promise.all([
-	llm.callText({ promptId: "summarize", variables: { text }, signal: controller.signal }),
-	llm.callJSON({ promptId: "tag",       variables: { text }, signal: controller.signal }),
+  llm.callText({ promptId: "summarize", variables: { text }, signal: controller.signal }),
+  llm.callJSON({ promptId: "tag", variables: { text }, signal: controller.signal }),
 ]);
 ```
 
@@ -141,9 +131,9 @@ Inject any `LLMLogger`-compatible logger. Every call emits a structured `llmCall
 import { ConsoleLogger } from "guidlio-lm";
 
 const llm = new GuidlioLMService({
-	providers: [...],
-	logger: new ConsoleLogger(),
-	promptRegistry: registry,
+  providers: [...],
+  logger: new ConsoleLogger(),
+  promptRegistry: registry,
 });
 
 // Each call logs something like:

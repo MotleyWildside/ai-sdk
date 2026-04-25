@@ -6,6 +6,7 @@ pipeline with no custom policy.
 **Steps:** `validate-user → fetch-profile → enrich-context`
 
 **Concepts covered:**
+
 - Extending `PipelineStep` with a typed context
 - `ok()` and `failed()` helpers
 - Default policy: `ok → next`, `failed → fail` (no subclassing needed)
@@ -16,11 +17,11 @@ pipeline with no custom policy.
 ## Context
 
 ```typescript
-import { BaseContext } from 'guidlio-lm';
+import { BaseContext } from "guidlio-lm";
 
 interface UserContext extends BaseContext {
   userId: string;
-  profile?: { name: string; tier: 'free' | 'pro' };
+  profile?: { name: string; tier: "free" | "pro" };
   enriched?: boolean;
 }
 ```
@@ -32,22 +33,22 @@ interface UserContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from 'guidlio-lm';
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
 
 class ValidateUserStep extends PipelineStep<UserContext> {
-  readonly name = 'validate-user';
+  readonly name = "validate-user";
 
   async run(ctx: UserContext, _meta: StepRunMeta): Promise<StepResult<UserContext>> {
     if (!ctx.userId.trim()) {
       // retryable: false — a bad userId won't get better on a second attempt
-      return failed({ ctx, error: new Error('userId is required'), retryable: false });
+      return failed({ ctx, error: new Error("userId is required"), retryable: false });
     }
     return ok({ ctx });
   }
 }
 
 class FetchProfileStep extends PipelineStep<UserContext> {
-  readonly name = 'fetch-profile';
+  readonly name = "fetch-profile";
 
   async run(ctx: UserContext, _meta: StepRunMeta): Promise<StepResult<UserContext>> {
     const profile = await db.findUser(ctx.userId);
@@ -65,7 +66,7 @@ class FetchProfileStep extends PipelineStep<UserContext> {
 }
 
 class EnrichContextStep extends PipelineStep<UserContext> {
-  readonly name = 'enrich-context';
+  readonly name = "enrich-context";
 
   async run(ctx: UserContext, _meta: StepRunMeta): Promise<StepResult<UserContext>> {
     // Feature flags, A/B cohort assignment, locale resolution, etc.
@@ -82,14 +83,10 @@ class EnrichContextStep extends PipelineStep<UserContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from 'guidlio-lm';
+import { GuidlioOrchestrator } from "guidlio-lm";
 
 const orchestrator = new GuidlioOrchestrator<UserContext>({
-  steps: [
-    new ValidateUserStep(),
-    new FetchProfileStep(),
-    new EnrichContextStep(),
-  ],
+  steps: [new ValidateUserStep(), new FetchProfileStep(), new EnrichContextStep()],
   // No policy or observer specified — defaults to NoopPipelineObserver and
   // DefaultPolicy (ok → next, failed → fail immediately).
 });
@@ -101,20 +98,20 @@ const orchestrator = new GuidlioOrchestrator<UserContext>({
 
 ```typescript
 // Happy path
-const result = await orchestrator.run({ traceId: 'req-abc', userId: 'user-42' });
+const result = await orchestrator.run({ traceId: "req-abc", userId: "user-42" });
 
-if (result.status === 'ok') {
-  console.log(result.ctx.profile);   // { name: 'Alice', tier: 'pro' }
-  console.log(result.ctx.enriched);  // true
+if (result.status === "ok") {
+  console.log(result.ctx.profile); // { name: 'Alice', tier: 'pro' }
+  console.log(result.ctx.enriched); // true
 }
 
 // Failure path — user not found
-const miss = await orchestrator.run({ traceId: 'req-xyz', userId: 'ghost' });
+const miss = await orchestrator.run({ traceId: "req-xyz", userId: "ghost" });
 
-if (miss.status === 'failed') {
-  console.error(miss.error.message);    // User "ghost" not found
+if (miss.status === "failed") {
+  console.error(miss.error.message); // User "ghost" not found
   console.error(miss.error.statusCode); // 404
-  console.error(miss.error.stepName);   // fetch-profile
+  console.error(miss.error.stepName); // fetch-profile
   // miss.error.cause is the original Error thrown (or returned) by the step
 }
 ```
@@ -131,9 +128,9 @@ with `status: 'failed'` just like an explicit `failed()` return — but the
 
 ```typescript
 class BuggyStep extends PipelineStep<UserContext> {
-  readonly name = 'buggy';
+  readonly name = "buggy";
   async run(ctx: UserContext, _meta: StepRunMeta): Promise<StepResult<UserContext>> {
-    throw new TypeError('Unexpected null'); // caught by the orchestrator
+    throw new TypeError("Unexpected null"); // caught by the orchestrator
   }
 }
 // result.status === 'failed'

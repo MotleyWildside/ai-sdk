@@ -3,6 +3,7 @@
 Different prompt categories have different caching needs. Classification prompts produce the same answer for the same input, so a long-lived cache entry saves significant cost. Personalized chat responses are unique per user session and should never be cached. This example shows how to pick a caching strategy per prompt category, when to force-refresh a stale entry, and when to stay out of the cache entirely.
 
 **Concepts covered:**
+
 - `"read_through"` for deterministic, reusable responses
 - `"refresh"` to force-update a stale cache entry while keeping it warm for other callers
 - `"bypass"` (or omitting `cache`) for personalized and streaming responses
@@ -21,39 +22,39 @@ const registry = new PromptRegistry();
 // ── Classification ─────────────────────────────────────────────────────────
 // Same input → same output. Cache aggressively.
 registry.register({
-	promptId: "classify-intent",
-	version: 1,
-	systemPrompt: "Classify the user intent as one of: question, complaint, praise, other.",
-	userPrompt: "Message: {text}",
-	modelDefaults: { model: "gpt-4o-mini", temperature: 0 }, // temperature: 0 = stable cache key
-	output: { type: "json" },
+  promptId: "classify-intent",
+  version: 1,
+  systemPrompt: "Classify the user intent as one of: question, complaint, praise, other.",
+  userPrompt: "Message: {text}",
+  modelDefaults: { model: "gpt-4o-mini", temperature: 0 }, // temperature: 0 = stable cache key
+  output: { type: "json" },
 });
 
 // ── Extraction ─────────────────────────────────────────────────────────────
 // Extracts facts from a source document. Refresh when source updates.
 registry.register({
-	promptId: "extract-metadata",
-	version: 1,
-	systemPrompt: "Extract structured metadata from this document.",
-	userPrompt: "{document}",
-	modelDefaults: { model: "gpt-4o-mini", temperature: 0 },
-	output: { type: "json" },
+  promptId: "extract-metadata",
+  version: 1,
+  systemPrompt: "Extract structured metadata from this document.",
+  userPrompt: "{document}",
+  modelDefaults: { model: "gpt-4o-mini", temperature: 0 },
+  output: { type: "json" },
 });
 
 // ── Personalized chat ──────────────────────────────────────────────────────
 // Every session is unique. Do not cache.
 registry.register({
-	promptId: "chat-reply",
-	version: 1,
-	systemPrompt: "You are a helpful assistant. Respond naturally to the user.",
-	userPrompt: "{userMessage}",
-	modelDefaults: { model: "gpt-4o", temperature: 0.8 },
-	output: { type: "text" },
+  promptId: "chat-reply",
+  version: 1,
+  systemPrompt: "You are a helpful assistant. Respond naturally to the user.",
+  userPrompt: "{userMessage}",
+  modelDefaults: { model: "gpt-4o", temperature: 0.8 },
+  output: { type: "text" },
 });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: registry,
 });
 ```
 
@@ -69,10 +70,10 @@ const IntentSchema = z.object({ intent: z.enum(["question", "complaint", "praise
 // First call: miss → calls provider → stores for 24 h
 // Subsequent identical calls: hit → near-zero latency
 const classification = await llm.callJSON({
-	promptId: "classify-intent",
-	variables: { text: "Where can I find my invoice?" },
-	jsonSchema: IntentSchema,
-	cache: { mode: "read_through", ttlSeconds: 86_400 },
+  promptId: "classify-intent",
+  variables: { text: "Where can I find my invoice?" },
+  jsonSchema: IntentSchema,
+  cache: { mode: "read_through", ttlSeconds: 86_400 },
 });
 
 console.log(classification.data.intent); // "question"
@@ -89,21 +90,21 @@ console.log(classification.data.intent); // "question"
 ```typescript
 // Normal read (serve from cache if fresh)
 const extracted = await llm.callJSON({
-	promptId: "extract-metadata",
-	variables: { document: docText },
-	idempotencyKey: `doc:${docId}`,
-	cache: { mode: "read_through", ttlSeconds: 3_600 }, // 1 h
+  promptId: "extract-metadata",
+  variables: { document: docText },
+  idempotencyKey: `doc:${docId}`,
+  cache: { mode: "read_through", ttlSeconds: 3_600 }, // 1 h
 });
 
 // Source document was updated — force a fresh extraction and repopulate the cache
 async function refreshDocumentCache(docId: string, updatedText: string): Promise<void> {
-	await llm.callJSON({
-		promptId: "extract-metadata",
-		variables: { document: updatedText },
-		idempotencyKey: `doc:${docId}`,
-		cache: { mode: "refresh", ttlSeconds: 3_600 },
-		// refresh: skips reading cache, calls provider, writes the result back
-	});
+  await llm.callJSON({
+    promptId: "extract-metadata",
+    variables: { document: updatedText },
+    idempotencyKey: `doc:${docId}`,
+    cache: { mode: "refresh", ttlSeconds: 3_600 },
+    // refresh: skips reading cache, calls provider, writes the result back
+  });
 }
 ```
 
@@ -116,9 +117,9 @@ async function refreshDocumentCache(docId: string, updatedText: string): Promise
 ```typescript
 // No `cache` param = no read, no write
 const reply = await llm.callText({
-	promptId: "chat-reply",
-	variables: { userMessage: "Tell me a joke about TypeScript." },
-	traceId: sessionId,
+  promptId: "chat-reply",
+  variables: { userMessage: "Tell me a joke about TypeScript." },
+  traceId: sessionId,
 });
 ```
 
@@ -128,11 +129,11 @@ const reply = await llm.callText({
 
 ## When NOT to cache
 
-| Scenario | Reason |
-| :--- | :--- |
-| Streaming responses | Streams cannot be read from cache; param is ignored with a warning |
-| Personalized outputs (user name, session history) | Unique per caller — a cache hit would serve the wrong content |
-| `temperature > 0` without `idempotencyKey` | Non-deterministic outputs shouldn't be served to future callers |
+| Scenario                                             | Reason                                                              |
+| :--------------------------------------------------- | :------------------------------------------------------------------ |
+| Streaming responses                                  | Streams cannot be read from cache; param is ignored with a warning  |
+| Personalized outputs (user name, session history)    | Unique per caller — a cache hit would serve the wrong content       |
+| `temperature > 0` without `idempotencyKey`           | Non-deterministic outputs shouldn't be served to future callers     |
 | Rapidly changing data (live prices, sensor readings) | Cache TTL can't keep up; set `enableCache: false` or use `"bypass"` |
 
 ---

@@ -26,97 +26,97 @@ import Redis from "ioredis";
 import type { CacheProvider, LLMLogger } from "guidlio-lm";
 
 interface RedisCacheProviderOptions {
-	// All cache keys are prefixed with this string.
-	// Use a version suffix (e.g. "llm:v1:") to invalidate the entire cache on schema changes.
-	namespace?: string;
-	// Optional logger — connection errors are logged as warnings, not thrown
-	logger?: LLMLogger;
+  // All cache keys are prefixed with this string.
+  // Use a version suffix (e.g. "llm:v1:") to invalidate the entire cache on schema changes.
+  namespace?: string;
+  // Optional logger — connection errors are logged as warnings, not thrown
+  logger?: LLMLogger;
 }
 
 export class RedisCacheProvider implements CacheProvider {
-	private redis: Redis;
-	private namespace: string;
-	private logger?: LLMLogger;
+  private redis: Redis;
+  private namespace: string;
+  private logger?: LLMLogger;
 
-	constructor(redis: Redis, options: RedisCacheProviderOptions = {}) {
-		this.redis = redis;
-		this.namespace = options.namespace ?? "llm:v1:";
-		this.logger = options.logger;
-	}
+  constructor(redis: Redis, options: RedisCacheProviderOptions = {}) {
+    this.redis = redis;
+    this.namespace = options.namespace ?? "llm:v1:";
+    this.logger = options.logger;
+  }
 
-	async get<T>(key: string): Promise<T | null> {
-		try {
-			const raw = await this.redis.get(this.ns(key));
-			if (!raw) return null;
-			return JSON.parse(raw) as T;
-		} catch (err) {
-			// A Redis read failure must never crash the caller — degrade to a cache miss
-			this.logger?.warn("RedisCacheProvider.get failed — treating as cache miss", {
-				key,
-				error: err instanceof Error ? err.message : String(err),
-			});
-			return null;
-		}
-	}
+  async get<T>(key: string): Promise<T | null> {
+    try {
+      const raw = await this.redis.get(this.ns(key));
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      // A Redis read failure must never crash the caller — degrade to a cache miss
+      this.logger?.warn("RedisCacheProvider.get failed — treating as cache miss", {
+        key,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  }
 
-	async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-		try {
-			const serialised = JSON.stringify(value);
-			if (ttlSeconds !== undefined && ttlSeconds > 0) {
-				// "EX" sets an absolute TTL in whole seconds
-				await this.redis.set(this.ns(key), serialised, "EX", ttlSeconds);
-			} else {
-				// No TTL — entry persists until explicitly deleted or the key evicts under memory pressure
-				await this.redis.set(this.ns(key), serialised);
-			}
-		} catch (err) {
-			this.logger?.warn("RedisCacheProvider.set failed — result will not be cached", {
-				key,
-				error: err instanceof Error ? err.message : String(err),
-			});
-		}
-	}
+  async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+    try {
+      const serialised = JSON.stringify(value);
+      if (ttlSeconds !== undefined && ttlSeconds > 0) {
+        // "EX" sets an absolute TTL in whole seconds
+        await this.redis.set(this.ns(key), serialised, "EX", ttlSeconds);
+      } else {
+        // No TTL — entry persists until explicitly deleted or the key evicts under memory pressure
+        await this.redis.set(this.ns(key), serialised);
+      }
+    } catch (err) {
+      this.logger?.warn("RedisCacheProvider.set failed — result will not be cached", {
+        key,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
-	async delete(key: string): Promise<void> {
-		try {
-			await this.redis.del(this.ns(key));
-		} catch (err) {
-			this.logger?.warn("RedisCacheProvider.delete failed", {
-				key,
-				error: err instanceof Error ? err.message : String(err),
-			});
-		}
-	}
+  async delete(key: string): Promise<void> {
+    try {
+      await this.redis.del(this.ns(key));
+    } catch (err) {
+      this.logger?.warn("RedisCacheProvider.delete failed", {
+        key,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
-	async clear(): Promise<void> {
-		// Scan and delete only keys under our namespace rather than flushing the entire DB.
-		// This is safe to run in a shared Redis instance.
-		try {
-			let cursor = "0";
-			do {
-				const [nextCursor, keys] = await this.redis.scan(
-					cursor,
-					"MATCH",
-					`${this.namespace}*`,
-					"COUNT",
-					100,
-				);
-				cursor = nextCursor;
-				if (keys.length > 0) {
-					await this.redis.del(...keys);
-				}
-			} while (cursor !== "0");
-		} catch (err) {
-			this.logger?.warn("RedisCacheProvider.clear failed", {
-				error: err instanceof Error ? err.message : String(err),
-			});
-		}
-	}
+  async clear(): Promise<void> {
+    // Scan and delete only keys under our namespace rather than flushing the entire DB.
+    // This is safe to run in a shared Redis instance.
+    try {
+      let cursor = "0";
+      do {
+        const [nextCursor, keys] = await this.redis.scan(
+          cursor,
+          "MATCH",
+          `${this.namespace}*`,
+          "COUNT",
+          100,
+        );
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await this.redis.del(...keys);
+        }
+      } while (cursor !== "0");
+    } catch (err) {
+      this.logger?.warn("RedisCacheProvider.clear failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
-	// Prepend the namespace so keys never collide with other applications using the same Redis
-	private ns(key: string): string {
-		return `${this.namespace}${key}`;
-	}
+  // Prepend the namespace so keys never collide with other applications using the same Redis
+  private ns(key: string): string {
+    return `${this.namespace}${key}`;
+  }
 }
 ```
 
@@ -131,32 +131,32 @@ const redis = new Redis(process.env.REDIS_URL!);
 const logger = new ConsoleLogger();
 
 const cacheProvider = new RedisCacheProvider(redis, {
-	namespace: "llm:v1:",
-	logger,
+  namespace: "llm:v1:",
+  logger,
 });
 
 const registry = new PromptRegistry();
 registry.register({
-	promptId: "summarize",
-	version: 1,
-	systemPrompt: "Summarize the following text in one paragraph.",
-	userPrompt: "{text}",
-	modelDefaults: { model: "gpt-4o-mini", temperature: 0.3 },
-	output: { type: "text" },
+  promptId: "summarize",
+  version: 1,
+  systemPrompt: "Summarize the following text in one paragraph.",
+  userPrompt: "{text}",
+  modelDefaults: { model: "gpt-4o-mini", temperature: 0.3 },
+  output: { type: "text" },
 });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	cacheProvider,
-	logger,
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  cacheProvider,
+  logger,
+  promptRegistry: registry,
 });
 
 // First call: cache miss — calls OpenAI, stores result for 1 hour
 const result = await llm.callText({
-	promptId: "summarize",
-	variables: { text: "The history of the Roman Empire..." },
-	cache: { mode: "read_through", ttlSeconds: 3600 },
+  promptId: "summarize",
+  variables: { text: "The history of the Roman Empire..." },
+  cache: { mode: "read_through", ttlSeconds: 3600 },
 });
 
 console.log(result.text);
@@ -173,9 +173,9 @@ await redis.quit();
 
 // This call reaches OpenAI directly — no error thrown
 const result = await llm.callText({
-	promptId: "summarize",
-	variables: { text: "..." },
-	cache: { mode: "read_through", ttlSeconds: 60 },
+  promptId: "summarize",
+  variables: { text: "..." },
+  cache: { mode: "read_through", ttlSeconds: 60 },
 });
 ```
 

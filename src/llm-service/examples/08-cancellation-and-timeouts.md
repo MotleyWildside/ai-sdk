@@ -3,6 +3,7 @@
 `AbortSignal` lets you cancel an in-flight LLM call without waiting for the provider to respond. This is essential in server environments where a client can disconnect mid-request, and in batch jobs where you want a per-item deadline so a slow call does not stall the whole batch.
 
 **Concepts covered:**
+
 - Request-scoped cancellation: one `AbortController` per call
 - Sharing a single signal across parallel calls with `Promise.all`
 - Wrapping a call with a `setTimeout`-based deadline and cleaning up on success
@@ -22,17 +23,17 @@ import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 const registry = new PromptRegistry();
 
 registry.register({
-	promptId: "summarize",
-	version: 1,
-	systemPrompt: "You are a concise summarizer.",
-	userPrompt: "Summarize: {text}",
-	modelDefaults: { model: "gpt-4o-mini", temperature: 0.3 },
-	output: { type: "text" },
+  promptId: "summarize",
+  version: 1,
+  systemPrompt: "You are a concise summarizer.",
+  userPrompt: "Summarize: {text}",
+  modelDefaults: { model: "gpt-4o-mini", temperature: 0.3 },
+  output: { type: "text" },
 });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: registry,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: registry,
 });
 
 const controller = new AbortController();
@@ -41,18 +42,18 @@ const controller = new AbortController();
 req.on("close", () => controller.abort());
 
 try {
-	const result = await llm.callText({
-		promptId: "summarize",
-		variables: { text: longArticle },
-		signal: controller.signal,
-	});
-	res.json({ text: result.text });
+  const result = await llm.callText({
+    promptId: "summarize",
+    variables: { text: longArticle },
+    signal: controller.signal,
+  });
+  res.json({ text: result.text });
 } catch (err) {
-	if (err instanceof Error && err.name === "AbortError") {
-		// Client disconnected — no need to respond
-		return;
-	}
-	throw err;
+  if (err instanceof Error && err.name === "AbortError") {
+    // Client disconnected — no need to respond
+    return;
+  }
+  throw err;
 }
 ```
 
@@ -69,24 +70,24 @@ const controller = new AbortController();
 req.on("close", () => controller.abort());
 
 try {
-	const [summary, tags] = await Promise.all([
-		llm.callText({
-			promptId: "summarize",
-			variables: { text },
-			signal: controller.signal,
-		}),
-		llm.callJSON({
-			promptId: "extract-tags",
-			variables: { text },
-			signal: controller.signal,
-		}),
-	]);
-	res.json({ summary: summary.text, tags: tags.data });
+  const [summary, tags] = await Promise.all([
+    llm.callText({
+      promptId: "summarize",
+      variables: { text },
+      signal: controller.signal,
+    }),
+    llm.callJSON({
+      promptId: "extract-tags",
+      variables: { text },
+      signal: controller.signal,
+    }),
+  ]);
+  res.json({ summary: summary.text, tags: tags.data });
 } catch (err) {
-	if (err instanceof Error && err.name === "AbortError") {
-		return;
-	}
-	throw err;
+  if (err instanceof Error && err.name === "AbortError") {
+    return;
+  }
+  throw err;
 }
 ```
 
@@ -98,27 +99,27 @@ For a hard per-call time budget, create a controller, set a `setTimeout` to abor
 
 ```typescript
 async function callWithDeadline(text: string): Promise<string> {
-	const controller = new AbortController();
+  const controller = new AbortController();
 
-	// Abort after 5 seconds regardless of provider response time
-	const timer = setTimeout(() => controller.abort("timeout"), 5_000);
+  // Abort after 5 seconds regardless of provider response time
+  const timer = setTimeout(() => controller.abort("timeout"), 5_000);
 
-	try {
-		const result = await llm.callText({
-			promptId: "summarize",
-			variables: { text },
-			signal: controller.signal,
-		});
-		// Prevent the timer from firing after the call succeeds
-		clearTimeout(timer);
-		return result.text;
-	} catch (err) {
-		clearTimeout(timer);
-		if (err instanceof Error && err.name === "AbortError") {
-			throw new Error("LLM call timed out after 5 s");
-		}
-		throw err;
-	}
+  try {
+    const result = await llm.callText({
+      promptId: "summarize",
+      variables: { text },
+      signal: controller.signal,
+    });
+    // Prevent the timer from firing after the call succeeds
+    clearTimeout(timer);
+    return result.text;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("LLM call timed out after 5 s");
+    }
+    throw err;
+  }
 }
 ```
 
@@ -131,18 +132,18 @@ async function callWithDeadline(text: string): Promise<string> {
 ```typescript
 // Equivalent to the manual deadline above, but with no timer to manage
 try {
-	const result = await llm.callText({
-		promptId: "summarize",
-		variables: { text },
-		signal: AbortSignal.timeout(5_000),
-	});
-	return result.text;
+  const result = await llm.callText({
+    promptId: "summarize",
+    variables: { text },
+    signal: AbortSignal.timeout(5_000),
+  });
+  return result.text;
 } catch (err) {
-	if (err instanceof Error && err.name === "TimeoutError") {
-		// AbortSignal.timeout throws a TimeoutError (not AbortError) in Node >=17.3
-		throw new Error("LLM call timed out after 5 s");
-	}
-	throw err;
+  if (err instanceof Error && err.name === "TimeoutError") {
+    // AbortSignal.timeout throws a TimeoutError (not AbortError) in Node >=17.3
+    throw new Error("LLM call timed out after 5 s");
+  }
+  throw err;
 }
 ```
 

@@ -15,9 +15,9 @@
 
 ```typescript
 interface LLMLogger {
-	info(message: string, meta?: Record<string, unknown>): void;
-	warn(message: string, meta?: Record<string, unknown>): void;
-	error(message: string, meta?: Record<string, unknown>): void;
+  info(message: string, meta?: Record<string, unknown>): void;
+  warn(message: string, meta?: Record<string, unknown>): void;
+  error(message: string, meta?: Record<string, unknown>): void;
 }
 ```
 
@@ -33,24 +33,24 @@ import type { LLMLogger } from "guidlio-lm";
 // npm install pino
 
 export class PinoAdapter implements LLMLogger {
-	private logger: pino.Logger;
+  private logger: pino.Logger;
 
-	constructor(logger: pino.Logger) {
-		this.logger = logger;
-	}
+  constructor(logger: pino.Logger) {
+    this.logger = logger;
+  }
 
-	info(message: string, meta?: Record<string, unknown>): void {
-		// pino's API is logger.info(bindings, message) — meta spreads as structured fields
-		this.logger.info(meta ?? {}, message);
-	}
+  info(message: string, meta?: Record<string, unknown>): void {
+    // pino's API is logger.info(bindings, message) — meta spreads as structured fields
+    this.logger.info(meta ?? {}, message);
+  }
 
-	warn(message: string, meta?: Record<string, unknown>): void {
-		this.logger.warn(meta ?? {}, message);
-	}
+  warn(message: string, meta?: Record<string, unknown>): void {
+    this.logger.warn(meta ?? {}, message);
+  }
 
-	error(message: string, meta?: Record<string, unknown>): void {
-		this.logger.error(meta ?? {}, message);
-	}
+  error(message: string, meta?: Record<string, unknown>): void {
+    this.logger.error(meta ?? {}, message);
+  }
 }
 ```
 
@@ -64,9 +64,9 @@ import { PinoAdapter } from "./PinoAdapter";
 const pinoInstance = pino({ level: "info" });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: new PromptRegistry(),
-	logger: new PinoAdapter(pinoInstance),
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: new PromptRegistry(),
+  logger: new PinoAdapter(pinoInstance),
 });
 ```
 
@@ -80,24 +80,24 @@ import type { LLMLogger } from "guidlio-lm";
 // npm install winston
 
 export class WinstonAdapter implements LLMLogger {
-	private logger: winston.Logger;
+  private logger: winston.Logger;
 
-	constructor(logger: winston.Logger) {
-		this.logger = logger;
-	}
+  constructor(logger: winston.Logger) {
+    this.logger = logger;
+  }
 
-	info(message: string, meta?: Record<string, unknown>): void {
-		// winston's logger.info(message, meta) attaches meta as structured fields
-		this.logger.info(message, meta);
-	}
+  info(message: string, meta?: Record<string, unknown>): void {
+    // winston's logger.info(message, meta) attaches meta as structured fields
+    this.logger.info(message, meta);
+  }
 
-	warn(message: string, meta?: Record<string, unknown>): void {
-		this.logger.warn(message, meta);
-	}
+  warn(message: string, meta?: Record<string, unknown>): void {
+    this.logger.warn(message, meta);
+  }
 
-	error(message: string, meta?: Record<string, unknown>): void {
-		this.logger.error(message, meta);
-	}
+  error(message: string, meta?: Record<string, unknown>): void {
+    this.logger.error(message, meta);
+  }
 }
 ```
 
@@ -108,15 +108,15 @@ import winston from "winston";
 import { WinstonAdapter } from "./WinstonAdapter";
 
 const winstonInstance = winston.createLogger({
-	level: "info",
-	transports: [new winston.transports.Console()],
-	format: winston.format.json(),
+  level: "info",
+  transports: [new winston.transports.Console()],
+  format: winston.format.json(),
 });
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: new PromptRegistry(),
-	logger: new WinstonAdapter(winstonInstance),
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: new PromptRegistry(),
+  logger: new WinstonAdapter(winstonInstance),
 });
 ```
 
@@ -130,35 +130,48 @@ import type { LLMLogger } from "guidlio-lm";
 type LogLevel = "info" | "warn" | "error";
 
 export class StructuredJsonLogger implements LLMLogger {
-	private write(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
-		const entry: Record<string, unknown> = {
-			level,
-			message,
-			timestamp: new Date().toISOString(),
-			...meta,
-		};
-		// process.stdout.write is synchronous-safe in Node; console.log adds a newline
-		process.stdout.write(JSON.stringify(entry) + "\n");
-	}
+  private write(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
+    const entry: Record<string, unknown> = {
+      level,
+      message,
+      timestamp: new Date().toISOString(),
+      ...meta,
+    };
+    // process.stdout.write is synchronous-safe in Node; console.log adds a newline
+    process.stdout.write(JSON.stringify(entry) + "\n");
+  }
 
-	info(message: string, meta?: Record<string, unknown>): void {
-		this.write("info", message, meta);
-	}
+  info(message: string, meta?: Record<string, unknown>): void {
+    this.write("info", message, meta);
+  }
 
-	warn(message: string, meta?: Record<string, unknown>): void {
-		this.write("warn", message, meta);
-	}
+  warn(message: string, meta?: Record<string, unknown>): void {
+    this.write("warn", message, meta);
+  }
 
-	error(message: string, meta?: Record<string, unknown>): void {
-		this.write("error", message, meta);
-	}
+  error(message: string, meta?: Record<string, unknown>): void {
+    this.write("error", message, meta);
+  }
 }
 ```
 
 Sample output for a successful call:
 
 ```json
-{"level":"info","message":"llm call","timestamp":"2026-04-23T10:00:00.000Z","traceId":"trace_abc","promptId":"summarize","promptVersion":1,"model":"gpt-4o-mini","provider":"openai","success":true,"cached":false,"durationMs":412,"usage":{"promptTokens":83,"completionTokens":42,"totalTokens":125}}
+{
+  "level": "info",
+  "message": "llm call",
+  "timestamp": "2026-04-23T10:00:00.000Z",
+  "traceId": "trace_abc",
+  "promptId": "summarize",
+  "promptVersion": 1,
+  "model": "gpt-4o-mini",
+  "provider": "openai",
+  "success": true,
+  "cached": false,
+  "durationMs": 412,
+  "usage": { "promptTokens": 83, "completionTokens": 42, "totalTokens": 125 }
+}
 ```
 
 Usage:
@@ -168,21 +181,21 @@ import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
 import { StructuredJsonLogger } from "./StructuredJsonLogger";
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
-	promptRegistry: new PromptRegistry(),
-	logger: new StructuredJsonLogger(),
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
+  promptRegistry: new PromptRegistry(),
+  logger: new StructuredJsonLogger(),
 });
 ```
 
 ## What the service logs
 
-| Event | Level | Notable meta fields |
-| :--- | :--- | :--- |
-| Successful call | `info` | `traceId`, `promptId`, `model`, `provider`, `durationMs`, `usage`, `cached` |
-| Retry attempt | `warn` | `traceId`, `attempt`, `maxAttempts`, `retryDelayMs`, `error` |
-| Retries exhausted | `error` | `traceId`, `attempt`, `error` |
-| Provider fallback | `warn` | `requestedProvider`, `resolvedProvider` (when `defaultProvider` name doesn't match) |
-| Cache read/write | `info` | `key`, `hit` (boolean), `ttlSeconds` |
+| Event             | Level   | Notable meta fields                                                                 |
+| :---------------- | :------ | :---------------------------------------------------------------------------------- |
+| Successful call   | `info`  | `traceId`, `promptId`, `model`, `provider`, `durationMs`, `usage`, `cached`         |
+| Retry attempt     | `warn`  | `traceId`, `attempt`, `maxAttempts`, `retryDelayMs`, `error`                        |
+| Retries exhausted | `error` | `traceId`, `attempt`, `error`                                                       |
+| Provider fallback | `warn`  | `requestedProvider`, `resolvedProvider` (when `defaultProvider` name doesn't match) |
+| Cache read/write  | `info`  | `key`, `hit` (boolean), `ttlSeconds`                                                |
 
 ## What to change next
 

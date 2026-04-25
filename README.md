@@ -28,8 +28,8 @@ npm install guidlio-lm
 import { GuidlioLMService, OpenAIProvider } from "guidlio-lm";
 
 const llm = new GuidlioLMService({
-	providers: [new OpenAIProvider(process.env.OPENAI_API_KEY)],
-	enableCache: true,
+  providers: [new OpenAIProvider(process.env.OPENAI_API_KEY)],
+  enableCache: true,
 });
 ```
 
@@ -39,24 +39,24 @@ Decouple your prompts from code using the built-in registry. Supports variables,
 
 ```typescript
 llm.promptRegistry.register({
-	promptId: "hello_world",
-	version: 1,
-	systemPrompt: "You are a helpful assistant.",
-	userPrompt: "Hello, {name}! How are you today?",
-	output: { type: "text" },
-	modelDefaults: {
-		model: "gpt-4o",
-		temperature: 0.7,
-	},
+  promptId: "hello_world",
+  version: 1,
+  systemPrompt: "You are a helpful assistant.",
+  userPrompt: "Hello, {name}! How are you today?",
+  output: { type: "text" },
+  modelDefaults: {
+    model: "gpt-4o",
+    temperature: 0.7,
+  },
 });
 
 llm.promptRegistry.register({
-	promptId: "get_city_info",
-	version: 1,
-	systemPrompt: "You are a travel expert.",
-	userPrompt: "Provide details about {city}.",
-	output: { type: "json" }, // Enforces JSON mode
-	modelDefaults: { model: "gemini-1.5-flash" },
+  promptId: "get_city_info",
+  version: 1,
+  systemPrompt: "You are a travel expert.",
+  userPrompt: "Provide details about {city}.",
+  output: { type: "json" }, // Enforces JSON mode
+  modelDefaults: { model: "gemini-1.5-flash" },
 });
 ```
 
@@ -64,8 +64,8 @@ llm.promptRegistry.register({
 
 ```typescript
 const result = await llm.callText({
-	promptId: "hello_world",
-	variables: { name: "User" },
+  promptId: "hello_world",
+  variables: { name: "User" },
 });
 
 console.log(result.text);
@@ -75,12 +75,12 @@ console.log(result.text);
 
 ```typescript
 const result = await llm.callJSON({
-	promptId: "get_city_info",
-	variables: { city: "Paris" },
-	jsonSchema: z.object({
-		population: z.number(),
-		landmark: z.string(),
-	}),
+  promptId: "get_city_info",
+  variables: { city: "Paris" },
+  jsonSchema: z.object({
+    population: z.number(),
+    landmark: z.string(),
+  }),
 });
 
 console.log(result.data.landmark); // Fully typed
@@ -94,16 +94,16 @@ Build complex multi-step workflows with the `GuidlioOrchestrator`:
 import { GuidlioOrchestrator, ok } from "guidlio-lm";
 
 const pipe = new GuidlioOrchestrator({
-	steps: [
-		{
-			name: "classify",
-			run: async (ctx) => ok({ ctx: { ...ctx, category: "support" } }),
-		},
-		{
-			name: "respond",
-			run: async (ctx) => ok({ ctx: { ...ctx, reply: "How can I help?" } }),
-		},
-	],
+  steps: [
+    {
+      name: "classify",
+      run: async (ctx) => ok({ ctx: { ...ctx, category: "support" } }),
+    },
+    {
+      name: "respond",
+      run: async (ctx) => ok({ ctx: { ...ctx, reply: "How can I help?" } }),
+    },
+  ],
 });
 
 const { status, ctx } = await pipe.run({ input: "..." });
@@ -132,8 +132,8 @@ Optimize your costs and performance with flexible caching modes:
 
 ```typescript
 const result = await llm.callText({
-	promptId: "expensive_query",
-	cache: { mode: "read_through", ttlSeconds: 3600 },
+  promptId: "expensive_query",
+  cache: { mode: "read_through", ttlSeconds: 3600 },
 });
 ```
 

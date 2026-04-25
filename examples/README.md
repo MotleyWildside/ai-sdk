@@ -3,6 +3,7 @@
 A curated example library organized by what you're trying to do. Every example is a self-contained `.md` file with copy-paste-ready TypeScript.
 
 Examples live in three trees:
+
 - [`src/llm-service/examples/`](../src/llm-service/examples/) — single-call surface (text, JSON, streaming, embeddings, caching)
 - [`src/orchestrator/examples/`](../src/orchestrator/examples/) — multi-step pipelines, FSM routing, agents
 - [`examples/`](.) — end-to-end recipes and framework integrations (this folder)

@@ -10,27 +10,27 @@ import { PromptRegistry } from "guidlio-lm";
 const registry = new PromptRegistry();
 
 registry.register({
-	// ── Identity ──────────────────────────────
-	promptId: "classify-ticket",
-	version: 2,                   // number or string; numeric versions compared numerically
+  // ── Identity ──────────────────────────────
+  promptId: "classify-ticket",
+  version: 2, // number or string; numeric versions compared numerically
 
-	// ── Message templates ─────────────────────
-	systemPrompt: "You are a customer support classifier.",
-	userPrompt: "Classify this ticket:\n\n{body}\n\nCategories: {categories}",
+  // ── Message templates ─────────────────────
+  systemPrompt: "You are a customer support classifier.",
+  userPrompt: "Classify this ticket:\n\n{body}\n\nCategories: {categories}",
 
-	// ── Model defaults ────────────────────────
-	modelDefaults: {
-		model: "gpt-4o-mini",
-		temperature: 0,
-		maxTokens: 128,
-		topP: 1,
-	},
+  // ── Model defaults ────────────────────────
+  modelDefaults: {
+    model: "gpt-4o-mini",
+    temperature: 0,
+    maxTokens: 128,
+    topP: 1,
+  },
 
-	// ── Output ───────────────────────────────
-	output: {
-		type: "json",             // "text" | "json"
-		schema: CategorySchema,   // optional Zod schema; validated in callJSON
-	},
+  // ── Output ───────────────────────────────
+  output: {
+    type: "json", // "text" | "json"
+    schema: CategorySchema, // optional Zod schema; validated in callJSON
+  },
 });
 ```
 
@@ -39,9 +39,9 @@ registry.register({
 Multiple versions of the same `promptId` can coexist. `getPrompt` with no version returns the latest one (highest numeric value, then lexicographic).
 
 ```typescript
-registry.register({ promptId: "draft", version: 1, /* ... */ });
-registry.register({ promptId: "draft", version: 2, /* ... */ });
-registry.register({ promptId: "draft", version: "2024-11-01", /* ... */ });
+registry.register({ promptId: "draft", version: 1 /* ... */ });
+registry.register({ promptId: "draft", version: 2 /* ... */ });
+registry.register({ promptId: "draft", version: "2024-11-01" /* ... */ });
 
 // Calling without version → latest
 await llm.callText({ promptId: "draft", variables: { text } });
@@ -61,20 +61,20 @@ await llm.callText({ promptId: "draft", promptVersion: 1, variables: { text } })
 
 ```typescript
 registry.register({
-	promptId: "report",
-	version: 1,
-	systemPrompt: "You are an analyst for {company}.",
-	userPrompt: "Analyse these metrics: {metrics}",
-	modelDefaults: { model: "gpt-4o" },
-	output: { type: "text" },
+  promptId: "report",
+  version: 1,
+  systemPrompt: "You are an analyst for {company}.",
+  userPrompt: "Analyse these metrics: {metrics}",
+  modelDefaults: { model: "gpt-4o" },
+  output: { type: "text" },
 });
 
 await llm.callText({
-	promptId: "report",
-	variables: {
-		company: "Acme Corp",
-		metrics: { revenue: 1_200_000, churn: 0.03 },  // object → JSON string
-	},
+  promptId: "report",
+  variables: {
+    company: "Acme Corp",
+    metrics: { revenue: 1_200_000, churn: 0.03 }, // object → JSON string
+  },
 });
 ```
 
@@ -96,12 +96,12 @@ import { readFileSync } from "fs";
 import type { PromptDefinition } from "guidlio-lm";
 
 const definitions: PromptDefinition[] = JSON.parse(
-	readFileSync("prompts.json", "utf-8"),
+  readFileSync("prompts.json", "utf-8"),
 );
 
 const registry = new PromptRegistry();
 for (const def of definitions) {
-	registry.register(def);
+  registry.register(def);
 }
 
 const llm = new GuidlioLMService({ providers: [...], promptRegistry: registry });

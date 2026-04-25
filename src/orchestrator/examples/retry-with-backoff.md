@@ -7,6 +7,7 @@ propagate immediately.
 **Steps:** `call-external-api → parse-response`
 
 **Concepts covered:**
+
 - `RetryPolicy` — drop-in retries with configurable back-off, no boilerplate
 - `meta.attempt` — retry count visible inside the step for logging / jitter
 - `retryable: true/false` — step signals intent; `RetryPolicy` enforces the limit
@@ -18,7 +19,7 @@ propagate immediately.
 ## Context
 
 ```typescript
-import { BaseContext } from 'guidlio-lm';
+import { BaseContext } from "guidlio-lm";
 
 interface ApiContext extends BaseContext {
   requestPayload: Record<string, unknown>;
@@ -32,15 +33,15 @@ interface ApiContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from 'guidlio-lm';
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
 
 class CallExternalApiStep extends PipelineStep<ApiContext> {
-  readonly name = 'call-external-api';
+  readonly name = "call-external-api";
 
   async run(ctx: ApiContext, meta: StepRunMeta): Promise<StepResult<ApiContext>> {
     // Honor the AbortSignal forwarded from orchestrator.run(ctx, { signal })
     if (meta.signal?.aborted) {
-      return failed({ ctx, error: new Error('Aborted before request'), retryable: false });
+      return failed({ ctx, error: new Error("Aborted before request"), retryable: false });
     }
 
     try {
@@ -63,12 +64,12 @@ class CallExternalApiStep extends PipelineStep<ApiContext> {
 }
 
 class ParseResponseStep extends PipelineStep<ApiContext> {
-  readonly name = 'parse-response';
+  readonly name = "parse-response";
 
   async run(ctx: ApiContext, _meta: StepRunMeta): Promise<StepResult<ApiContext>> {
     const raw = ctx.responseData as { score?: number };
-    if (typeof raw?.score !== 'number') {
-      return failed({ ctx, error: new Error('Invalid response: missing score'), retryable: false });
+    if (typeof raw?.score !== "number") {
+      return failed({ ctx, error: new Error("Invalid response: missing score"), retryable: false });
     }
     return ok({ ctx: { ...ctx, parsedResult: { score: raw.score } } });
   }
@@ -80,17 +81,18 @@ class ParseResponseStep extends PipelineStep<ApiContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from 'guidlio-lm';
+import { GuidlioOrchestrator, RetryPolicy } from "guidlio-lm";
 
 const orchestrator = new GuidlioOrchestrator<ApiContext>({
   steps: [new CallExternalApiStep(), new ParseResponseStep()],
 
   // RetryPolicy options — all optional, shown here with their defaults:
-  policy: () => new RetryPolicy({
-    maxAttempts: 3,                                                  // first attempt + 2 retries
-    retryIf: (outcome) => outcome.retryable === true,               // default — honour the step's flag
-    backoffMs: (attempt) => Math.min(100 * 2 ** (attempt - 1), 30_000), // default — exponential
-  }),
+  policy: () =>
+    new RetryPolicy({
+      maxAttempts: 3, // first attempt + 2 retries
+      retryIf: (outcome) => outcome.retryable === true, // default — honour the step's flag
+      backoffMs: (attempt) => Math.min(100 * 2 ** (attempt - 1), 30_000), // default — exponential
+    }),
 
   // Fail the step (non-retryable) if it takes longer than 3 s.
   // Note: the step's Promise keeps running in the background — pass
@@ -109,23 +111,23 @@ inside the orchestrator — the step itself needs no backoff logic.
 ```typescript
 // Normal run — will retry on transient failures
 const result = await orchestrator.run({
-  traceId: 'req-001',
-  requestPayload: { query: 'hello' },
+  traceId: "req-001",
+  requestPayload: { query: "hello" },
 });
 
-if (result.status === 'ok') {
-  console.log('Score:', result.ctx.parsedResult?.score);
+if (result.status === "ok") {
+  console.log("Score:", result.ctx.parsedResult?.score);
 } else {
-  console.error('Failed after retries:', result.error.message);
+  console.error("Failed after retries:", result.error.message);
   // result.error.cause is the original Error from the step
 }
 
 // Cancellation from the caller side — also aborts any in-progress retry delay
 const controller = new AbortController();
-setTimeout(() => controller.abort('request_timeout'), 5_000);
+setTimeout(() => controller.abort("request_timeout"), 5_000);
 
 const cancelled = await orchestrator.run(
-  { traceId: 'req-002', requestPayload: { query: 'slow' } },
+  { traceId: "req-002", requestPayload: { query: "slow" } },
   { signal: controller.signal },
 );
 // cancelled.status === 'failed'
@@ -181,11 +183,14 @@ mixed retry + redirect handling, subclass `RetryPolicy` rather than `DefaultPoli
 
 ```typescript
 class RetryThenFallbackPolicy extends RetryPolicy<ApiContext> {
-  protected override fail(outcome: StepOutcomeFailed, input: PolicyDecisionInput<ApiContext>): Transition {
+  protected override fail(
+    outcome: StepOutcomeFailed,
+    input: PolicyDecisionInput<ApiContext>,
+  ): Transition {
     const retry = super.fail(outcome, input);
     // If RetryPolicy decided to give up, redirect to the fallback step instead
-    if (retry.type === 'fail') {
-      return { type: 'goto', stepName: 'fallback' };
+    if (retry.type === "fail") {
+      return { type: "goto", stepName: "fallback" };
     }
     return retry;
   }
