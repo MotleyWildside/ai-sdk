@@ -13,7 +13,7 @@ The built-in `InMemoryCacheProvider` grows without bound — in a long-running s
 ## Implementation
 
 ```typescript
-import type { CacheProvider } from "guidlio-lm";
+import type { CacheProvider } from "@guidlio/ai-sdk";
 
 interface CacheEntry<T> {
   value: T;
@@ -113,7 +113,7 @@ export class LruCacheProvider implements CacheProvider {
 ## Wiring into GuidlioLMService
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { LruCacheProvider } from "./LruCacheProvider";
 
 const registry = new PromptRegistry();

@@ -1,6 +1,6 @@
 # Cloudflare Workers Integration
 
-Running `guidlio-lm` in the Cloudflare Workers runtime: which providers work, which runtime APIs need polyfills, and a KV-backed `CacheProvider` implementation.
+Running `@guidlio/ai-sdk` in the Cloudflare Workers runtime: which providers work, which runtime APIs need polyfills, and a KV-backed `CacheProvider` implementation.
 
 **Concepts covered:**
 
@@ -17,10 +17,10 @@ All three built-in providers (`OpenAIProvider`, `GeminiProvider`, `OpenRouterPro
 
 ```typescript
 // All of these work in Workers:
-import { OpenAIProvider, GeminiProvider, OpenRouterProvider } from "guidlio-lm";
+import { OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@guidlio/ai-sdk";
 ```
 
-The Workers runtime includes the Web Fetch API but not Node.js built-ins by default. `guidlio-lm` imports `randomUUID` from the Node.js `"crypto"` module internally. Enable the `nodejs_compat` compatibility flag to shim it.
+The Workers runtime includes the Web Fetch API but not Node.js built-ins by default. `@guidlio/ai-sdk` imports `randomUUID` from the Node.js `"crypto"` module internally. Enable the `nodejs_compat` compatibility flag to shim it.
 
 **`wrangler.toml`:**
 
@@ -42,7 +42,7 @@ id = "your-kv-namespace-id"
 ```typescript
 // src/kvCache.ts
 import type { KVNamespace } from "@cloudflare/workers-types";
-import type { CacheProvider } from "guidlio-lm";
+import type { CacheProvider } from "@guidlio/ai-sdk";
 
 export class KVCacheProvider implements CacheProvider {
   constructor(
@@ -78,7 +78,7 @@ export class KVCacheProvider implements CacheProvider {
 
 ```typescript
 // src/worker.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { KVCacheProvider } from "./kvCache";
 import type { Env } from "./types";
 

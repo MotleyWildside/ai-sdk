@@ -27,7 +27,7 @@ import {
   LoggerPipelineObserver,
   BaseContext,
   LLMTransientError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 interface SummarizeCtx extends BaseContext {
   rawText: string;
@@ -77,7 +77,7 @@ export function createPipeline(llm: GuidlioLMService, observer: LoggerPipelineOb
 ```typescript
 // src/pipeline/progressObserver.ts
 import type { Job } from "bullmq";
-import { NoopPipelineObserver, PipelineObserver, StepOutcome } from "guidlio-lm";
+import { NoopPipelineObserver, PipelineObserver, StepOutcome } from "@guidlio/ai-sdk";
 
 export class BullMQProgressObserver extends NoopPipelineObserver implements PipelineObserver {
   private stepIndex = 0;
@@ -114,7 +114,7 @@ import {
   PromptRegistry,
   LoggerPipelineObserver,
   PipelineAbortedError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 import { createPipeline } from "./pipeline/summarizePipeline";
 import { BullMQProgressObserver } from "./pipeline/progressObserver";
 

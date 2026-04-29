@@ -18,7 +18,7 @@ Retrieval-Augmented Generation combines the precision of document retrieval with
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface Document {
   id: string;
@@ -89,7 +89,7 @@ import {
   OpenAIProvider,
   PromptRegistry,
   ConsoleLogger,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -131,7 +131,7 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
 import { z } from "zod";
 
 class EmbedQueryStep extends PipelineStep<RagContext> {
@@ -249,7 +249,7 @@ class GenerateStep extends PipelineStep<RagContext> {
 The policy degrades instead of failing when retrieval returns zero candidates. This lets the caller decide whether a "no results" answer is acceptable rather than treating it as a pipeline error.
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "guidlio-lm";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "@guidlio/ai-sdk";
 
 class RagPolicy extends DefaultPolicy<RagContext> {
   override ok(
@@ -278,7 +278,7 @@ class RagPolicy extends DefaultPolicy<RagContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver } from "guidlio-lm";
+import { GuidlioOrchestrator, LoggerPipelineObserver } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<RagContext>({
   steps: [new EmbedQueryStep(llm), new RetrieveStep(), new RerankStep(llm), new GenerateStep(llm)],

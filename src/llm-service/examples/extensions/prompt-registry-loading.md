@@ -40,8 +40,8 @@ Keep prompt templates in a file that can be edited and deployed separately from 
 ```typescript
 import { readFileSync } from "fs";
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
-import type { PromptDefinition } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import type { PromptDefinition } from "@guidlio/ai-sdk";
 
 // JSON-parsed definitions lack the Zod schema instance — attach them in code
 const ClassifyOutputSchema = z.object({
@@ -86,8 +86,8 @@ Use this when a central service owns prompt versions and pushes them to all cons
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
-import type { PromptDefinition } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import type { PromptDefinition } from "@guidlio/ai-sdk";
 
 const SentimentSchema = z.object({ sentiment: z.enum(["positive", "negative", "neutral"]) });
 
@@ -138,8 +138,8 @@ Export a `getRegistry()` getter backed by a module-level variable. A background 
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
-import type { PromptDefinition } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import type { PromptDefinition } from "@guidlio/ai-sdk";
 
 const schemaMap: Record<string, z.ZodSchema<unknown>> = {
   "classify-ticket": z.object({
@@ -205,7 +205,7 @@ Because `GuidlioLMService` is constructed once with a fixed `promptRegistry` ref
 
 ```typescript
 // service.ts
-import { GuidlioLMService, OpenAIProvider } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider } from "@guidlio/ai-sdk";
 import { getRegistry } from "./promptLoader";
 
 // The service itself holds no registry reference — it receives one each call
@@ -226,8 +226,8 @@ export function getLlmService(): GuidlioLMService {
 Or, pass a registry proxy that delegates to `getRegistry()` on every operation:
 
 ```typescript
-import type { PromptDefinition, PromptRegistry as IPromptRegistry } from "guidlio-lm";
-import { PromptRegistry } from "guidlio-lm";
+import type { PromptDefinition, PromptRegistry as IPromptRegistry } from "@guidlio/ai-sdk";
+import { PromptRegistry } from "@guidlio/ai-sdk";
 import { getRegistry } from "./promptLoader";
 
 // A thin proxy that forwards all calls to the current active registry

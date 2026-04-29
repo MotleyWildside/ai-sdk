@@ -36,7 +36,7 @@ export interface FeatureFlagService {
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface IngestionContext extends BaseContext {
   userId: string;
@@ -57,7 +57,7 @@ enrichment step. For everything else — other steps, `failed` outcomes, `redire
 outcomes — it delegates to `super.decide()`.
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "guidlio-lm";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "@guidlio/ai-sdk";
 import { FeatureFlagService } from "./flags";
 
 class FeatureFlagPolicy extends DefaultPolicy<IngestionContext> {
@@ -103,7 +103,7 @@ async overrides satisfy it — you do not need a wrapper.
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class ParseStep extends PipelineStep<IngestionContext> {
   readonly name = "parse";
@@ -151,7 +151,7 @@ class StoreStep extends PipelineStep<IngestionContext> {
 be reused across sequential runs. For concurrent runs, use a factory.
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 import { FeatureFlagPolicy } from "./policy";
 import { launchDarklyClient } from "./flags";
 

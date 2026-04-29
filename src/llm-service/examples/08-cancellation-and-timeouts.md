@@ -18,7 +18,7 @@
 Create one `AbortController` per request. Pass `.signal` to `callText`. When the caller wants to cancel — a client disconnect, a user clicking "stop" — call `controller.abort()`.
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 

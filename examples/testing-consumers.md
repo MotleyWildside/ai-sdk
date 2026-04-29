@@ -1,6 +1,6 @@
 # Testing Consumer Code
 
-Testing code that uses `guidlio-lm` without hitting real provider APIs. The approach is to inject a `MockLLMProvider` that returns scripted responses, combined with `InMemoryCacheProvider` for cache behavior tests and `enableCache: false` for tests that don't care about caching.
+Testing code that uses `@guidlio/ai-sdk` without hitting real provider APIs. The approach is to inject a `MockLLMProvider` that returns scripted responses, combined with `InMemoryCacheProvider` for cache behavior tests and `enableCache: false` for tests that don't care about caching.
 
 **Concepts covered:**
 
@@ -17,7 +17,7 @@ Testing code that uses `guidlio-lm` without hitting real provider APIs. The appr
 Put this in a shared test helper file (e.g., `tests/helpers/MockLLMProvider.ts`):
 
 ```typescript
-import { LLMProvider, LLMTransientError, ProviderRequest } from "guidlio-lm";
+import { LLMProvider, LLMTransientError, ProviderRequest } from "@guidlio/ai-sdk";
 
 type MockResponse = {
   text?: string;
@@ -111,7 +111,7 @@ A simple `SummarizeService` that wraps `GuidlioLMService`:
 
 ```typescript
 // src/SummarizeService.ts
-import { GuidlioLMService, LLMTextResult } from "guidlio-lm";
+import { GuidlioLMService, LLMTextResult } from "@guidlio/ai-sdk";
 
 export class SummarizeService {
   constructor(private llm: GuidlioLMService) {}
@@ -133,7 +133,7 @@ export class SummarizeService {
 
 ```typescript
 import { describe, it, expect, beforeEach } from "vitest";
-import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "guidlio-lm";
+import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "@guidlio/ai-sdk";
 import { MockLLMProvider } from "./helpers/MockLLMProvider";
 import { SummarizeService } from "../src/SummarizeService";
 

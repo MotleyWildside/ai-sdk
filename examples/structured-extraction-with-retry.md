@@ -15,7 +15,7 @@ Messy user input — copy-pasted invoice text, multi-language form submissions, 
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface ExtractionContext extends BaseContext {
   rawText: string;
@@ -38,7 +38,7 @@ interface InvoiceData {
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const InvoiceSchema = z.object({
   invoiceNumber: z.string().min(1),
@@ -102,7 +102,7 @@ import {
   redirect,
   LLMSchemaError,
   LLMParseError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class ExtractStep extends PipelineStep<ExtractionContext> {
   readonly name = "extract";
@@ -179,7 +179,7 @@ class RepairStep extends PipelineStep<ExtractionContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RedirectRoutingPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<ExtractionContext>({
   steps: [new ExtractStep(llm), new RepairStep(llm)],

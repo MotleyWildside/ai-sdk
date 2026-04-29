@@ -16,7 +16,7 @@ A `PipelineObserver` receives lifecycle hooks for every step start, step finish,
 ## The PipelineObserver interface
 
 ```typescript
-import { PipelineObserver, NoopPipelineObserver, StepOutcome, PipelineRunResult } from "guidlio-lm";
+import { PipelineObserver, NoopPipelineObserver, StepOutcome, PipelineRunResult } from "@guidlio/ai-sdk";
 ```
 
 `NoopPipelineObserver` provides empty implementations of every hook so you only override the ones you need.
@@ -43,7 +43,7 @@ declare const pipelineRunTotal: Counter; // pipeline_run_total
 declare const pipelineRunDurationMs: Histogram; // pipeline_run_duration_ms
 declare const pipelineErrorsTotal: Counter; // pipeline_errors_total
 
-import { NoopPipelineObserver, PipelineObserver, BaseContext, PipelineRunResult } from "guidlio-lm";
+import { NoopPipelineObserver, PipelineObserver, BaseContext, PipelineRunResult } from "@guidlio/ai-sdk";
 
 class MetricsObserver<C extends BaseContext>
   extends NoopPipelineObserver
@@ -108,8 +108,8 @@ class MetricsObserver<C extends BaseContext>
 ## Wiring the observer
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "guidlio-lm";
-import { BaseContext } from "guidlio-lm";
+import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface WorkerContext extends BaseContext {
   jobId: string;

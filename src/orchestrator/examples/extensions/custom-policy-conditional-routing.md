@@ -20,7 +20,7 @@ logic: it updates ctx and returns `ok()`; the policy owns control flow.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface ReviewContext extends BaseContext {
   documentId: string;
@@ -46,7 +46,7 @@ import {
   BaseContext,
   StepOutcome,
   Transition,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 type StepOutcomeOk = Extract<StepOutcome, { type: "ok" }>;
 
@@ -76,7 +76,7 @@ non-classify case avoids reimplementing that default.
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class ClassifyStep extends PipelineStep<ReviewContext> {
   readonly name = "classify";
@@ -125,7 +125,7 @@ All steps must be registered even though only one branch executes per run.
 `PipelineDefinitionError` if the step is missing.
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<ReviewContext>({
   steps: [

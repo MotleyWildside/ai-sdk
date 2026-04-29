@@ -27,7 +27,7 @@ plan ──► execute ──► verify ──pass──► (stop, ok)
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface PlanContext extends BaseContext {
   goal: string;
@@ -57,7 +57,7 @@ import {
   PolicyDecisionOutput,
   Transition,
   ContextAdjustment,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 const MAX_PLANNING_ATTEMPTS = 3;
 
@@ -118,7 +118,7 @@ class PlanExecutePolicy extends DefaultPolicy<PlanContext> {
 ### `plan` — LLM generates a task list
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class PlanStep extends PipelineStep<PlanContext> {
   readonly name = "plan";
@@ -226,7 +226,7 @@ class VerifyStep extends PipelineStep<PlanContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver } from "guidlio-lm";
+import { GuidlioOrchestrator, LoggerPipelineObserver } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<PlanContext>({
   steps: [new PlanStep(), new ExecuteStep(), new VerifyStep()],

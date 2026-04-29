@@ -5,7 +5,7 @@
 ## Anatomy of a PromptDefinition
 
 ```typescript
-import { PromptRegistry } from "guidlio-lm";
+import { PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -93,7 +93,7 @@ registry.clear();
 
 ```typescript
 import { readFileSync } from "fs";
-import type { PromptDefinition } from "guidlio-lm";
+import type { PromptDefinition } from "@guidlio/ai-sdk";
 
 const definitions: PromptDefinition[] = JSON.parse(
   readFileSync("prompts.json", "utf-8"),

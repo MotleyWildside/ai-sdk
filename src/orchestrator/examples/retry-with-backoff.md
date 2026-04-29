@@ -19,7 +19,7 @@ propagate immediately.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface ApiContext extends BaseContext {
   requestPayload: Record<string, unknown>;
@@ -33,7 +33,7 @@ interface ApiContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class CallExternalApiStep extends PipelineStep<ApiContext> {
   readonly name = "call-external-api";
@@ -81,7 +81,7 @@ class ParseResponseStep extends PipelineStep<ApiContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<ApiContext>({
   steps: [new CallExternalApiStep(), new ParseResponseStep()],

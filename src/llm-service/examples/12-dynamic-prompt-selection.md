@@ -17,7 +17,7 @@ The prompt registry is a versioned store that lets you pin calls to a specific p
 Omitting `promptVersion` (or passing `"latest"`) resolves to the highest-registered version for that `promptId`. The resolution is purely numeric first, then lexicographic — so version `10` beats version `9`, and version `"beta"` sorts lexicographically among non-numeric versions.
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 

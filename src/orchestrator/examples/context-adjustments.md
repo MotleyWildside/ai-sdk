@@ -33,7 +33,7 @@ The `patch` mode is a shallow merge: top-level fields in `patch` overwrite the c
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface PlanningContext extends BaseContext {
   goal: string;
@@ -49,7 +49,7 @@ interface PlanningContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
 
 class PlanStep extends PipelineStep<PlanningContext> {
   readonly name = "plan";
@@ -95,7 +95,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   ContextAdjustment,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class PlanningPolicy extends DefaultPolicy<PlanningContext> {
   private readonly maxPlanningAttempts = 3;
@@ -149,7 +149,7 @@ class PlanningPolicy extends DefaultPolicy<PlanningContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<PlanningContext>({
   steps: [new PlanStep(), new ValidatePlanStep(), new ExecuteStep()],

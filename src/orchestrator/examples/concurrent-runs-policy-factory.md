@@ -26,7 +26,7 @@ import {
   ok,
   failed,
   BaseContext,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 interface Ctx extends BaseContext {
   data?: string;
@@ -100,7 +100,7 @@ The orchestrator still calls `policy.reset()` at the start of each run. For a fa
 If you write a custom policy with state, always implement `reset()` and call `super.reset()`:
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "guidlio-lm";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "@guidlio/ai-sdk";
 
 class CountingPolicy<C extends BaseContext> extends DefaultPolicy<C> {
   private callCount = 0;

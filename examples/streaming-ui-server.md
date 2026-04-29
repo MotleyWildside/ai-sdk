@@ -17,7 +17,7 @@ Server-Sent Events (SSE) let the browser receive LLM output as it is generated, 
 
 ```typescript
 import express, { Request, Response } from "express";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@guidlio/ai-sdk";
 
 // Singleton — initialized once at module load, reused across requests
 const registry = new PromptRegistry();

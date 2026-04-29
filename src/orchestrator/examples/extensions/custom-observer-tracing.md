@@ -36,7 +36,7 @@ application startup — the observer code is unaware of exporters or processors.
 
 ```typescript
 import { trace, context, SpanStatusCode, Span, Tracer } from "@opentelemetry/api";
-import { PipelineObserver, StepOutcome, Transition } from "guidlio-lm";
+import { PipelineObserver, StepOutcome, Transition } from "@guidlio/ai-sdk";
 
 class TracingObserver implements PipelineObserver {
   private readonly tracer: Tracer;
@@ -167,7 +167,7 @@ same correlation key as the pipeline spans. The LLM service logs it alongside mo
 name and token counts, giving you a single string to grep in your log aggregator.
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface ProcessContext extends BaseContext {
   documentId: string;
@@ -184,7 +184,7 @@ import {
   failed,
   GuidlioLMService,
   LLMTransientError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class AnalyzeStep extends PipelineStep<ProcessContext> {
   readonly name = "analyze";
@@ -226,7 +226,7 @@ its own observer, or you must ensure the `traceId` is unique per run (it always 
 when you let the orchestrator generate it or pass a UUID).
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
 
 // Create one observer per orchestrator — not one per run
 const tracingObserver = new TracingObserver("my-service");

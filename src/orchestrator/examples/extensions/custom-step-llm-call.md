@@ -23,7 +23,7 @@ parse failures.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 import { z } from "zod";
 
 export const ClassificationSchema = z.object({
@@ -57,7 +57,7 @@ import {
   LLMPermanentError,
   LLMSchemaError,
   LLMParseError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 import { ClassifyContext, ClassificationSchema } from "./context";
 
 class ClassifyStep extends PipelineStep<ClassifyContext> {
@@ -118,7 +118,7 @@ class ClassifyStep extends PipelineStep<ClassifyContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [

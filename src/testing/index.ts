@@ -1,10 +1,10 @@
 /**
- * Testing helpers for consumers writing tests against guidlio-lm.
+ * Testing helpers for consumers writing tests against @guidlio/ai-sdk.
  *
- * Import from "guidlio-lm/testing" — requires vitest in your devDependencies.
+ * Import from "@guidlio/ai-sdk/testing" — requires vitest in your devDependencies.
  *
  * @example
- * import { makeMockProvider, makeMockCache } from "guidlio-lm/testing";
+ * import { makeMockProvider, makeMockCache } from "@guidlio/ai-sdk/testing";
  */
 export { makeMockProvider } from "./mockProvider";
 export { makeMockCache } from "./mockCache";

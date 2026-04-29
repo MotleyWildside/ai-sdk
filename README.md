@@ -1,8 +1,6 @@
-# 🧠 guidlio-lm
+# @guidlio/ai-sdk
 
-> A modern, simple, type-safe, and provider-agnostic gateway for LLMs.
-
-Stop fighting with multiple SDKs. **guidlio-lm** provides a unified interface for OpenAI, Gemini, OpenRouter and any custom providers with built-in prompt management, caching, and complex workflow orchestration.
+A TypeScript SDK for building AI apps with multiple LLM providers, structured outputs, prompt management, caching, and pipelines.
 
 ---
 
@@ -19,13 +17,13 @@ Stop fighting with multiple SDKs. **guidlio-lm** provides a unified interface fo
 ### 1. Install
 
 ```bash
-npm install guidlio-lm
+npm install @guidlio/ai-sdk
 ```
 
 ### 2. Initialize
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY)],
@@ -91,7 +89,7 @@ console.log(result.data.landmark); // Fully typed
 Build complex multi-step workflows with the `GuidlioOrchestrator`:
 
 ```typescript
-import { GuidlioOrchestrator, ok } from "guidlio-lm";
+import { GuidlioOrchestrator, ok } from "@guidlio/ai-sdk";
 
 const pipe = new GuidlioOrchestrator({
   steps: [

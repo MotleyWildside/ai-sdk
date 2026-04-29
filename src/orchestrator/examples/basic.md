@@ -17,7 +17,7 @@ pipeline with no custom policy.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface UserContext extends BaseContext {
   userId: string;
@@ -33,7 +33,7 @@ interface UserContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class ValidateUserStep extends PipelineStep<UserContext> {
   readonly name = "validate-user";
@@ -83,7 +83,7 @@ class EnrichContextStep extends PipelineStep<UserContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<UserContext>({
   steps: [new ValidateUserStep(), new FetchProfileStep(), new EnrichContextStep()],

@@ -5,7 +5,7 @@
 Register providers once; the service selects one per-call based on model-name prefix.
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, GeminiProvider, OpenRouterProvider } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [
@@ -74,7 +74,7 @@ Delay for attempt `n` (0-indexed): `min(baseDelay × 2^n + rand(0, 1000), maxDel
 All errors extend `LLMError` and carry `provider`, `model`, `promptId?`, `requestId?`, and `cause`.
 
 ```typescript
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "guidlio-lm";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
 
 try {
   const result = await llm.callJSON({ promptId: "sentiment", variables: { text } });
@@ -128,7 +128,7 @@ const [summary, tags] = await Promise.all([
 Inject any `LLMLogger`-compatible logger. Every call emits a structured `llmCall` entry with fields useful for cost accounting and latency tracking.
 
 ```typescript
-import { ConsoleLogger } from "guidlio-lm";
+import { ConsoleLogger } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [...],

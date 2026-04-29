@@ -15,7 +15,7 @@ Long pipelines that make multiple LLM calls can unexpectedly exceed your token b
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface GuardedContext extends BaseContext {
   query: string;
@@ -50,7 +50,7 @@ class BudgetExceededError extends Error {
 ## Service setup
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -94,7 +94,7 @@ const llm = new GuidlioLMService({
 Each step increments `ctx.tokensUsed` after every LLM call. The policy checks the running total after each `ok` outcome.
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class ClassifyStep extends PipelineStep<GuardedContext> {
   readonly name = "classify";
@@ -165,7 +165,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   StepOutcomeOk,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class BudgetPolicy extends DefaultPolicy<GuardedContext> {
   override ok(
@@ -194,7 +194,7 @@ class BudgetPolicy extends DefaultPolicy<GuardedContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<GuardedContext>({
   steps: [new ClassifyStep(llm), new SummarizeStep(llm), new RespondStep(llm)],
@@ -208,7 +208,7 @@ const orchestrator = new GuidlioOrchestrator<GuardedContext>({
 ## Running and handling budget errors
 
 ```typescript
-import { StepExecutionError } from "guidlio-lm";
+import { StepExecutionError } from "@guidlio/ai-sdk";
 
 const result = await orchestrator.run({
   traceId: crypto.randomUUID(),

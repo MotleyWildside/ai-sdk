@@ -1,6 +1,6 @@
 # Express Integration
 
-How to wire `guidlio-lm` into an Express application: a singleton service shared across requests, per-request trace IDs for log correlation, and AbortSignal wired to the HTTP connection lifecycle.
+How to wire `@guidlio/ai-sdk` into an Express application: a singleton service shared across requests, per-request trace IDs for log correlation, and AbortSignal wired to the HTTP connection lifecycle.
 
 **Concepts covered:**
 
@@ -17,7 +17,7 @@ Initialize the service once at module load. Providers are stateless and the `InM
 
 ```typescript
 // src/llm.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -46,7 +46,7 @@ export const llm = new GuidlioLMService({
 // src/routes/summarize.ts
 import { Router } from "express";
 import { llm } from "../llm";
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "guidlio-lm";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
 
 export const router = Router();
 

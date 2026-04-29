@@ -31,7 +31,7 @@ A pipeline that fetches, preprocesses, summarizes, and formats an article. Steps
 ### Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface ArticleContext extends BaseContext {
   articleId: string;
@@ -45,7 +45,7 @@ interface ArticleContext extends BaseContext {
 ### Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class FetchArticleStep extends PipelineStep<ArticleContext> {
   readonly name = "fetch-article";
@@ -118,7 +118,7 @@ class FormatOutputStep extends PipelineStep<ArticleContext> {
 ### Policy: degrade on summarize timeout
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "guidlio-lm";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "@guidlio/ai-sdk";
 
 class ArticleSummaryPolicy extends DefaultPolicy<ArticleContext> {
   override async decide(
@@ -150,7 +150,7 @@ class ArticleSummaryPolicy extends DefaultPolicy<ArticleContext> {
 ### Wiring and reading the result
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<ArticleContext>({
   steps: [

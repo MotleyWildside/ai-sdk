@@ -1,6 +1,6 @@
 # Fastify Integration
 
-Wiring `guidlio-lm` into a Fastify application using a plugin, Fastify's built-in request logger, and per-request traceId from `request.id`.
+Wiring `@guidlio/ai-sdk` into a Fastify application using a plugin, Fastify's built-in request logger, and per-request traceId from `request.id`.
 
 **Concepts covered:**
 
@@ -19,7 +19,7 @@ Fastify uses `pino` internally. This adapter delegates to `request.log` (if avai
 ```typescript
 // src/llmLogger.ts
 import type { FastifyBaseLogger } from "fastify";
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
 export class FastifyLLMLogger implements LLMLogger {
   constructor(private log: FastifyBaseLogger) {}
@@ -46,7 +46,7 @@ export class FastifyLLMLogger implements LLMLogger {
 // src/plugins/llm.ts
 import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { FastifyLLMLogger } from "../llmLogger";
 
 declare module "fastify" {
@@ -84,7 +84,7 @@ export default fp(async (fastify: FastifyInstance) => {
 ```typescript
 // src/routes/summarize.ts
 import type { FastifyInstance } from "fastify";
-import { LLMTransientError, LLMPermanentError } from "guidlio-lm";
+import { LLMTransientError, LLMPermanentError } from "@guidlio/ai-sdk";
 
 export async function summarizeRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Body: { text: string } }>("/summarize", async (request, reply) => {

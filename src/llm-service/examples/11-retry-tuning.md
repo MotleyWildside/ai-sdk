@@ -15,7 +15,7 @@ The retry system protects against transient provider failures (rate limits, 5xx 
 ## Default behavior
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -128,7 +128,7 @@ Only `LLMTransientError` enters the retry loop. All other error types propagate 
 | `LLMSchemaError`    | No       | Parsed JSON did not match the Zod schema             |
 
 ```typescript
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "guidlio-lm";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
 
 try {
   const result = await llm.callText({ promptId: "summarize", variables: { text } });

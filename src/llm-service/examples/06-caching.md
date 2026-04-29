@@ -15,7 +15,7 @@ Cache is only written when `ttlSeconds` is also set. Without a TTL the entry nev
 ## Basic read-through
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
@@ -81,7 +81,7 @@ const llm = new GuidlioLMService({
 Implement the `CacheProvider` interface and inject it at construction.
 
 ```typescript
-import type { CacheProvider } from "guidlio-lm";
+import type { CacheProvider } from "@guidlio/ai-sdk";
 import { createClient } from "redis";
 
 class RedisCacheProvider implements CacheProvider {

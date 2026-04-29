@@ -16,7 +16,7 @@ A minimal ReAct-style agent that lets an LLM choose between tools, execute them,
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface AgentContext extends BaseContext {
   query: string;
@@ -61,7 +61,7 @@ function runSearch(args: Record<string, string | number>): string {
 ## Prompts and service setup
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { z } from "zod";
 
 const registry = new PromptRegistry();
@@ -108,7 +108,7 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
 
 class SelectToolStep extends PipelineStep<AgentContext> {
   readonly name = "select-tool";
@@ -220,7 +220,7 @@ class AnswerStep extends PipelineStep<AgentContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RedirectRoutingPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<AgentContext>({
   steps: [

@@ -15,7 +15,7 @@ When your primary LLM provider is degraded, you want to automatically retry on a
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface FallbackContext extends BaseContext {
   promptId: string;
@@ -38,7 +38,7 @@ import {
   GeminiProvider,
   PromptRegistry,
   ConsoleLogger,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -71,7 +71,7 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, LLMTransientError } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, LLMTransientError } from "@guidlio/ai-sdk";
 
 class PrimaryCallStep extends PipelineStep<FallbackContext> {
   readonly name = "primary-call";
@@ -153,7 +153,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   StepOutcomeFailed,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class FallbackPolicy extends DefaultPolicy<FallbackContext> {
   protected override fail(
@@ -175,7 +175,7 @@ class FallbackPolicy extends DefaultPolicy<FallbackContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<FallbackContext>({
   steps: [new PrimaryCallStep(llm), new FallbackCallStep(llm)],

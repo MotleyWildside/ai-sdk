@@ -5,7 +5,7 @@
 ## Basic streaming to stdout
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 

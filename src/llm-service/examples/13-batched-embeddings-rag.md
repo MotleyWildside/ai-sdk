@@ -41,7 +41,7 @@ For production use, replace this with a proper tokenizer (`tiktoken` for OpenAI,
 ### Embedding a batch of chunks
 
 ```typescript
-import { GuidlioLMService, GeminiProvider } from "guidlio-lm";
+import { GuidlioLMService, GeminiProvider } from "@guidlio/ai-sdk";
 
 interface StoredChunk {
   chunkText: string;
@@ -158,7 +158,7 @@ async function retrieve(query: string, topK = 5): Promise<StoredChunk[]> {
 ### Using retrieved context in a generation call
 
 ```typescript
-import { PromptRegistry } from "guidlio-lm";
+import { PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 

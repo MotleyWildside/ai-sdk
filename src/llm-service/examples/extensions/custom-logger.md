@@ -27,9 +27,9 @@ The interface is intentionally narrow. Each method receives a human-readable `me
 
 ```typescript
 import type pino from "pino";
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
-// pino is a peer dependency — install it alongside guidlio-lm:
+// pino is a peer dependency — install it alongside @guidlio/ai-sdk:
 // npm install pino
 
 export class PinoAdapter implements LLMLogger {
@@ -58,7 +58,7 @@ Usage:
 
 ```typescript
 import pino from "pino";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { PinoAdapter } from "./PinoAdapter";
 
 const pinoInstance = pino({ level: "info" });
@@ -74,9 +74,9 @@ const llm = new GuidlioLMService({
 
 ```typescript
 import type winston from "winston";
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
-// winston is a peer dependency — install it alongside guidlio-lm:
+// winston is a peer dependency — install it alongside @guidlio/ai-sdk:
 // npm install winston
 
 export class WinstonAdapter implements LLMLogger {
@@ -125,7 +125,7 @@ const llm = new GuidlioLMService({
 For containerised workloads and Lambda functions where a log aggregator reads stdout line-by-line, write plain newline-delimited JSON with no dependencies.
 
 ```typescript
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
 type LogLevel = "info" | "warn" | "error";
 
@@ -177,7 +177,7 @@ Sample output for a successful call:
 Usage:
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 import { StructuredJsonLogger } from "./StructuredJsonLogger";
 
 const llm = new GuidlioLMService({

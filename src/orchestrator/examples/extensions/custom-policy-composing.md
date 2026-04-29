@@ -22,7 +22,7 @@ is called first and only the `fail` transition is intercepted.
 ## Policy
 
 ```typescript
-import { RetryPolicy, PolicyDecisionInput, BaseContext, StepOutcome, Transition } from "guidlio-lm";
+import { RetryPolicy, PolicyDecisionInput, BaseContext, StepOutcome, Transition } from "@guidlio/ai-sdk";
 
 type StepOutcomeFailed = Extract<StepOutcome, { type: "failed" }>;
 
@@ -69,7 +69,7 @@ and the second run starts with fewer retries than expected.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface SummaryContext extends BaseContext {
   documentId: string;
@@ -84,7 +84,7 @@ interface SummaryContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class PrimaryCallStep extends PipelineStep<SummaryContext> {
   readonly name = "primary-call";
@@ -138,7 +138,7 @@ class FinalizeStep extends PipelineStep<SummaryContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<SummaryContext>({
   steps: [new PrimaryCallStep(), new FallbackCallStep(), new FinalizeStep()],

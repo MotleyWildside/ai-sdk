@@ -22,7 +22,7 @@ import {
   PromptRegistry,
   ConsoleLogger,
   type CacheProvider,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 import { createClient, type RedisClientType } from "redis";
 
 // Redis-backed cache — survives process restarts, shared across workers

@@ -48,7 +48,7 @@ import {
   PolicyDecisionOutput,
   BaseContext,
   StepOutcome,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 // Treat the failed outcome type inline — no import needed for the literal shape
 type StepOutcomeFailed = Extract<StepOutcome, { type: "failed" }>;
@@ -120,7 +120,7 @@ class CircuitBreakerPolicy<C extends BaseContext> extends DefaultPolicy<C> {
 ## Context and steps
 
 ```typescript
-import { BaseContext, PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { BaseContext, PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 interface PaymentContext extends BaseContext {
   orderId: string;
@@ -163,7 +163,7 @@ by reference — every `run()` gets a fresh `CircuitBreakerPolicy` instance, but
 they all read and write the same `state` object.
 
 ```typescript
-import { GuidlioOrchestrator } from "guidlio-lm";
+import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
 import { makeBreakerState } from "./breaker";
 
 // Created once — lives for the lifetime of the process

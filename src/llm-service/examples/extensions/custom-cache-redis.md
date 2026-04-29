@@ -13,7 +13,7 @@ The built-in `InMemoryCacheProvider` is lost on process restart and is not share
 
 ## Installation
 
-`ioredis` is a peer dependency — install it alongside `guidlio-lm`:
+`ioredis` is a peer dependency — install it alongside `@guidlio/ai-sdk`:
 
 ```bash
 npm install ioredis
@@ -23,7 +23,7 @@ npm install ioredis
 
 ```typescript
 import Redis from "ioredis";
-import type { CacheProvider, LLMLogger } from "guidlio-lm";
+import type { CacheProvider, LLMLogger } from "@guidlio/ai-sdk";
 
 interface RedisCacheProviderOptions {
   // All cache keys are prefixed with this string.
@@ -124,7 +124,7 @@ export class RedisCacheProvider implements CacheProvider {
 
 ```typescript
 import Redis from "ioredis";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@guidlio/ai-sdk";
 import { RedisCacheProvider } from "./RedisCacheProvider";
 
 const redis = new Redis(process.env.REDIS_URL!);

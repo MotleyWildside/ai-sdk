@@ -20,7 +20,7 @@ budget. The policy never needs to know what a 429 means.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface EnrichContext extends BaseContext {
   userId: string;
@@ -37,7 +37,7 @@ interface EnrichContext extends BaseContext {
 ## Step
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class EnrichStep extends PipelineStep<EnrichContext> {
   readonly name = "enrich";
@@ -115,7 +115,7 @@ class EnrichStep extends PipelineStep<EnrichContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
 
 class UseProfileStep extends PipelineStep<EnrichContext> {
   readonly name = "use-profile";

@@ -20,7 +20,7 @@ into a single context update.
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface SummarizeContext extends BaseContext {
   documents: Array<{ id: string; text: string }>;
@@ -41,7 +41,7 @@ import {
   failed,
   GuidlioLMService,
   LLMTransientError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 class ParallelSummarizeStep extends PipelineStep<SummarizeContext> {
   readonly name = "parallel-summarize";
@@ -108,7 +108,7 @@ class ParallelSummarizeStep extends PipelineStep<SummarizeContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [

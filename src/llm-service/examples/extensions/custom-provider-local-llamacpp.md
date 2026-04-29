@@ -27,8 +27,8 @@ import type {
   LLMEmbedResponse,
   LLMEmbedBatchRequest,
   LLMEmbedBatchResponse,
-} from "guidlio-lm";
-import { LLMTransientError, LLMPermanentError } from "guidlio-lm";
+} from "@guidlio/ai-sdk";
+import { LLMTransientError, LLMPermanentError } from "@guidlio/ai-sdk";
 
 interface LlamaCppCompletionResponse {
   content: string;
@@ -223,7 +223,7 @@ export class LlamaCppProvider implements LLMProvider {
 Model names must use the `"local/"` prefix so `supportsModel` matches them.
 
 ```typescript
-import { GuidlioLMService, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, PromptRegistry } from "@guidlio/ai-sdk";
 import { LlamaCppProvider } from "./LlamaCppProvider";
 
 const registry = new PromptRegistry();
@@ -257,7 +257,7 @@ console.log(result.text);
 Because `supportsModel` is prefix-based you can register the local provider alongside cloud providers. The service routes `"local/*"` calls to llama.cpp and everything else to the appropriate cloud provider.
 
 ```typescript
-import { OpenAIProvider } from "guidlio-lm";
+import { OpenAIProvider } from "@guidlio/ai-sdk";
 
 const llm = new GuidlioLMService({
   providers: [new LlamaCppProvider(), new OpenAIProvider(process.env.OPENAI_API_KEY!)],

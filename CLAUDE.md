@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`guidlio-lm` — a lightweight, provider-agnostic LLM gateway published as an NPM package. The package is pure TypeScript, ESM-native with dual CJS/ESM output via `tsup`. Node >=18.
+`@guidlio/ai-sdk` — a lightweight, provider-agnostic LLM gateway published as an NPM package. The package is pure TypeScript, ESM-native with dual CJS/ESM output via `tsup`. Node >=18.
 
 ## Commands
 

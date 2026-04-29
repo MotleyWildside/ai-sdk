@@ -1,6 +1,6 @@
 # Custom Provider — Deterministic Mock for Consumer Tests
 
-When you write integration tests for code that calls `GuidlioLMService`, you want fully deterministic responses without making real API calls. `MockLLMProvider` is a scriptable in-process provider you own and ship alongside your consumer code — distinct from the internal `makeMockProvider` fixture that the `guidlio-lm` library uses for its own unit tests. This provider lets you assert on the exact messages the service sent, simulate transient failures, test retry logic, and verify caching behaviour.
+When you write integration tests for code that calls `GuidlioLMService`, you want fully deterministic responses without making real API calls. `MockLLMProvider` is a scriptable in-process provider you own and ship alongside your consumer code — distinct from the internal `makeMockProvider` fixture that the `@guidlio/ai-sdk` library uses for its own unit tests. This provider lets you assert on the exact messages the service sent, simulate transient failures, test retry logic, and verify caching behaviour.
 
 ## Concepts covered
 
@@ -24,8 +24,8 @@ import type {
   LLMEmbedResponse,
   LLMEmbedBatchRequest,
   LLMEmbedBatchResponse,
-} from "guidlio-lm";
-import { LLMTransientError } from "guidlio-lm";
+} from "@guidlio/ai-sdk";
+import { LLMTransientError } from "@guidlio/ai-sdk";
 
 export class MockLLMProvider implements LLMProvider {
   readonly name = "mock";
@@ -154,7 +154,7 @@ export class MockLLMProvider implements LLMProvider {
 
 ```typescript
 import { describe, it, expect, beforeEach } from "vitest";
-import { GuidlioLMService, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, PromptRegistry } from "@guidlio/ai-sdk";
 import { MockLLMProvider } from "./MockLLMProvider";
 
 describe("summarise pipeline", () => {
@@ -203,7 +203,7 @@ describe("summarise pipeline", () => {
 ### Verify that caching prevents a second provider call
 
 ```typescript
-import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "guidlio-lm";
+import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "@guidlio/ai-sdk";
 
 it("cache hit skips the provider on the second call", async () => {
   const registry = new PromptRegistry();
@@ -274,7 +274,7 @@ it("retries on transient errors and eventually succeeds", async () => {
 
 ## Distinction from `makeMockProvider`
 
-`makeMockProvider` (in `tests/fixtures/`) is a factory used by `guidlio-lm`'s own internal test suite. It is not part of the public API and may change between releases. `MockLLMProvider` above is code you own in your consumer project — import it from your own source tree, not from `guidlio-lm`.
+`makeMockProvider` (in `tests/fixtures/`) is a factory used by `@guidlio/ai-sdk`'s own internal test suite. It is not part of the public API and may change between releases. `MockLLMProvider` above is code you own in your consumer project — import it from your own source tree, not from `@guidlio/ai-sdk`.
 
 ## What to change next
 

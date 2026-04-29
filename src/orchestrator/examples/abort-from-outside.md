@@ -23,7 +23,7 @@ import {
   ok,
   BaseContext,
   PipelineAbortedError,
-} from "guidlio-lm";
+} from "@guidlio/ai-sdk";
 
 interface WorkCtx extends BaseContext {
   step1Done?: boolean;
@@ -138,7 +138,7 @@ async function handleSummarize(req: Request, res: Response): Promise<void> {
 The signal is forwarded to each step via `meta.signal`. Pass it into every async operation that supports it:
 
 ```typescript
-import { GuidlioLMService, LLMTransientError } from "guidlio-lm";
+import { GuidlioLMService, LLMTransientError } from "@guidlio/ai-sdk";
 
 class SummarizeStep extends PipelineStep<SummarizeCtx> {
   readonly name = "summarize";

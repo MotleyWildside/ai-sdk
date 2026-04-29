@@ -17,7 +17,7 @@ A pipeline's context object evolves as steps run — early steps produce data th
 The simplest approach. Fields start as `undefined` and are narrowed in each step that needs them.
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface PipelineCtx extends BaseContext {
   rawInput: string;
@@ -47,7 +47,7 @@ function requireField<T, K extends keyof T>(ctx: T, field: K): NonNullable<T[K]>
 Usage in a step:
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
 
 class ClassifyStep extends PipelineStep<PipelineCtx> {
   readonly name = "classify";
@@ -71,7 +71,7 @@ This is better than `ctx.parsed!` (silently crashes with a confusing message) or
 When later stages require fields that earlier stages don't have, a discriminated union makes the constraint explicit at the type level.
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 type PipelineStage =
   | { stage: "input"; rawText: string }
@@ -130,7 +130,7 @@ The tradeoff: discriminated unions require each step to transition `stage` expli
 Combining both patterns — a shared context with optional fields (simpler) plus a stage guard where the type contract is strict.
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 interface TicketCtx extends BaseContext {
   rawText: string;
@@ -145,7 +145,7 @@ interface TicketCtx extends BaseContext {
 ```
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, GuidlioOrchestrator } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, GuidlioOrchestrator } from "@guidlio/ai-sdk";
 
 class ParseStep extends PipelineStep<TicketCtx> {
   readonly name = "parse";

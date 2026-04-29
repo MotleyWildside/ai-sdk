@@ -15,7 +15,7 @@ Every LLM call emits a structured log entry with timing, token usage, cache stat
 ## Injecting a logger
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, ConsoleLogger, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, ConsoleLogger, PromptRegistry } from "@guidlio/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -92,7 +92,7 @@ attempt 3 → ok    →  { success: true,                durationMs: 401 }
 Filter on `!meta.retry` to get one aggregated record per logical call. Filter on `meta.retry === true` to count or alert on retry frequency.
 
 ```typescript
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
 class FilteringLogger implements LLMLogger {
   info(message: string, meta?: Record<string, unknown>): void {
@@ -159,7 +159,7 @@ console.log(`Processed ${myArticles.length} articles, used ${totalTokens} tokens
 Implement `LLMLogger` and translate each entry into an OTel span. The example shows the structural wiring — fill in the actual OTel SDK calls for your runtime.
 
 ```typescript
-import type { LLMLogger } from "guidlio-lm";
+import type { LLMLogger } from "@guidlio/ai-sdk";
 
 // Placeholder types — replace with your actual OTel SDK imports
 interface Tracer {

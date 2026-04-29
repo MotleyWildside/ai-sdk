@@ -6,7 +6,7 @@ Attach a Zod schema to the prompt definition. The service validates every respon
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "guidlio-lm";
+import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
 
 const SentimentSchema = z.object({
   sentiment: z.enum(["positive", "neutral", "negative"]),
@@ -83,7 +83,7 @@ const result = await llm.callJSON<string[]>({
 ## Error handling
 
 ```typescript
-import { LLMParseError, LLMSchemaError } from "guidlio-lm";
+import { LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
 
 try {
   const result = await llm.callJSON({ promptId: "sentiment", variables: { text } });

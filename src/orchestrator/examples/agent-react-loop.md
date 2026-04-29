@@ -22,7 +22,7 @@ think ──redirect:use_tool──► act ──redirect:think──► think  
 ## Context
 
 ```typescript
-import { BaseContext } from "guidlio-lm";
+import { BaseContext } from "@guidlio/ai-sdk";
 
 type ScratchpadEntry =
   | { role: "thought"; content: string }
@@ -49,7 +49,7 @@ history on each subsequent `think` call.
 The steps themselves never reference other step names — the route table owns that mapping.
 
 ```typescript
-import { RedirectRoutingPolicy } from "guidlio-lm";
+import { RedirectRoutingPolicy } from "@guidlio/ai-sdk";
 
 const agentRoutes = new RedirectRoutingPolicy<AgentContext>({
   use_tool: "act",
@@ -68,7 +68,7 @@ routes surface immediately rather than silently doing nothing.
 ### `think` — LLM decides the next action
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, redirect, failed } from "guidlio-lm";
+import { PipelineStep, StepResult, StepRunMeta, redirect, failed } from "@guidlio/ai-sdk";
 
 type LLMDecision =
   | { type: "use_tool"; thought: string; tool: { name: string; args: Record<string, unknown> } }
@@ -186,7 +186,7 @@ class AnswerStep extends PipelineStep<AgentContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from "guidlio-lm";
+import { GuidlioOrchestrator, LoggerPipelineObserver, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
 
 const orchestrator = new GuidlioOrchestrator<AgentContext>({
   steps: [new ThinkStep(), new ActStep(), new AnswerStep()],
