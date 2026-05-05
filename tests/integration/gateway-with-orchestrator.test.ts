@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { z } from "zod";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed, redirect } from "../../src/orchestrator/statusHelpers";
 import { RedirectRoutingPolicy } from "../../src/orchestrator/policies/RedirectRoutingPolicy";
@@ -48,7 +48,7 @@ describe("Integration — Gateway + Orchestrator", () => {
 			callImpl: async () => ({ text: "premium handled", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" }),
 		});
 
-		const svc = new GuidlioLMService({
+		const svc = new LMService({
 			providers: [pA, pB],
 			promptRegistry: reg,
 			...(opts.cache ? { cacheProvider: opts.cache } : {}),
@@ -99,7 +99,7 @@ describe("Integration — Gateway + Orchestrator", () => {
 			}
 		}
 
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new ClassifyStep(), new HandlePremiumStep(), new HandleStandardStep()],
 			policy: opts.policy
 				? () => new RetryPolicy<Ctx>(opts.policy)

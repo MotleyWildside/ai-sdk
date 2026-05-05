@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { LLMTransientError } from "../../src/llm-service/errors";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockLogger } from "../fixtures/mockLogger";
 import { makePrompt } from "../fixtures/prompts";
 
-describe("GuidlioLMService — Multi-provider scenarios", () => {
+describe("LMService — Multi-provider scenarios", () => {
 	let reg: PromptRegistry;
 	let providerA: ReturnType<typeof makeMockProvider>;
 	let providerB: ReturnType<typeof makeMockProvider>;
@@ -23,8 +23,8 @@ describe("GuidlioLMService — Multi-provider scenarios", () => {
 		vi.useRealTimers();
 	});
 
-	function makeSvc(overrides: Partial<Parameters<typeof GuidlioLMService["prototype"]["constructor"]>[0]> = {}) {
-		return new GuidlioLMService({ providers: [providerA, providerB], promptRegistry: reg, logger: log, ...overrides });
+	function makeSvc(overrides: Partial<Parameters<typeof LMService["prototype"]["constructor"]>[0]> = {}) {
+		return new LMService({ providers: [providerA, providerB], promptRegistry: reg, logger: log, ...overrides });
 	}
 
 	it("MP-01: model-a-v1 — providerA handles; providerB never called", async () => {
@@ -63,7 +63,7 @@ describe("GuidlioLMService — Multi-provider scenarios", () => {
 		const pA2 = makeMockProvider({ name: "providerA2", supports: (m) => m.startsWith("shared-") });
 		const pB2 = makeMockProvider({ name: "providerB2", supports: (m) => m.startsWith("shared-") });
 		reg.register(makePrompt({ promptId: "mp5", version: "1", modelDefaults: { model: "shared-v1" } }));
-		const svc = new GuidlioLMService({ providers: [pA2, pB2], promptRegistry: reg });
+		const svc = new LMService({ providers: [pA2, pB2], promptRegistry: reg });
 		await svc.callText({ promptId: "mp5" });
 		expect(pA2.call).toHaveBeenCalledOnce();
 		expect(pB2.call).not.toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe("GuidlioLMService — Multi-provider scenarios", () => {
 		});
 		const pB = makeMockProvider({ name: "providerB", supports: (m) => m.startsWith("model-b-") });
 		reg.register(makePrompt({ promptId: "mp8", version: "1", modelDefaults: { model: "model-a-v1" } }));
-		const svc = new GuidlioLMService({ providers: [pA, pB], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [pA, pB], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		const p = svc.callText({ promptId: "mp8" });
 		await vi.advanceTimersByTimeAsync(10_000);
 		await p;
@@ -120,7 +120,7 @@ describe("GuidlioLMService — Multi-provider scenarios", () => {
 			supports: (m) => m.startsWith("model-b-"),
 			callImpl: async () => ({ text: '{"key":"val"}', raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" }),
 		});
-		const svc = new GuidlioLMService({ providers: [providerA, providerB], promptRegistry: reg });
+		const svc = new LMService({ providers: [providerA, providerB], promptRegistry: reg });
 		await svc.callText({ promptId: "textP" });
 		await svc.callJSON({ promptId: "jsonP" });
 		expect(providerA.call).toHaveBeenCalledOnce();

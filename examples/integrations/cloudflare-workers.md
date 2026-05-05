@@ -1,6 +1,6 @@
 # Cloudflare Workers Integration
 
-Running `@guidlio/ai-sdk` in the Cloudflare Workers runtime: which providers work, which runtime APIs need polyfills, and a KV-backed `CacheProvider` implementation.
+Running `@motleywildside/ai-sdk` in the Cloudflare Workers runtime: which providers work, which runtime APIs need polyfills, and a KV-backed `CacheProvider` implementation.
 
 **Concepts covered:**
 
@@ -17,10 +17,10 @@ All three built-in providers (`OpenAIProvider`, `GeminiProvider`, `OpenRouterPro
 
 ```typescript
 // All of these work in Workers:
-import { OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@guidlio/ai-sdk";
+import { OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@motleywildside/ai-sdk";
 ```
 
-The Workers runtime includes the Web Fetch API but not Node.js built-ins by default. `@guidlio/ai-sdk` imports `randomUUID` from the Node.js `"crypto"` module internally. Enable the `nodejs_compat` compatibility flag to shim it.
+The Workers runtime includes the Web Fetch API but not Node.js built-ins by default. `@motleywildside/ai-sdk` imports `randomUUID` from the Node.js `"crypto"` module internally. Enable the `nodejs_compat` compatibility flag to shim it.
 
 **`wrangler.toml`:**
 
@@ -42,7 +42,7 @@ id = "your-kv-namespace-id"
 ```typescript
 // src/kvCache.ts
 import type { KVNamespace } from "@cloudflare/workers-types";
-import type { CacheProvider } from "@guidlio/ai-sdk";
+import type { CacheProvider } from "@motleywildside/ai-sdk";
 
 export class KVCacheProvider implements CacheProvider {
   constructor(
@@ -78,15 +78,15 @@ export class KVCacheProvider implements CacheProvider {
 
 ```typescript
 // src/worker.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 import { KVCacheProvider } from "./kvCache";
 import type { Env } from "./types";
 
 // Build the service lazily per isolate (Workers re-creates module scope on cold start).
 // Each isolate instance reuses its own service for the lifetime of the isolate.
-let llm: GuidlioLMService | null = null;
+let llm: LMService | null = null;
 
-function getService(env: Env): GuidlioLMService {
+function getService(env: Env): LMService {
   if (llm) return llm;
 
   const registry = new PromptRegistry();
@@ -99,7 +99,7 @@ function getService(env: Env): GuidlioLMService {
     output: { type: "text" },
   });
 
-  llm = new GuidlioLMService({
+  llm = new LMService({
     providers: [new OpenAIProvider(env.OPENAI_API_KEY)],
     promptRegistry: registry,
     cacheProvider: new KVCacheProvider(env.LLM_CACHE),

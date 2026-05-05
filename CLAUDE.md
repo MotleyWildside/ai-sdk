@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`@guidlio/ai-sdk` — a lightweight, provider-agnostic LLM gateway published as an NPM package. The package is pure TypeScript, ESM-native with dual CJS/ESM output via `tsup`. Node >=18.
+`@motleywildside/ai-sdk` — a lightweight, provider-agnostic LLM gateway published as an NPM package. The package is pure TypeScript, ESM-native with dual CJS/ESM output via `tsup`. Node >=18.
 
 ## Commands
 
@@ -30,19 +30,19 @@ The codebase has two independent subsystems that share only the logger and are c
 
 ### 1. `src/llm-service/` — the LLM gateway
 
-`GuidlioLMService` is a thin orchestration layer over pluggable `LLMProvider` adapters (OpenAI, Gemini, OpenRouter). Key design choices:
+`LMService` is a thin orchestration layer over pluggable `LLMProvider` adapters (OpenAI, Gemini, OpenRouter). Key design choices:
 
-- **Provider selection** ([GuidlioLMService.ts:65](src/llm-service/GuidlioLMService.ts#L65)): if `config.defaultProvider` is set, it's used unconditionally (with a warning+fallback if the name doesn't resolve). Otherwise providers are probed via `supportsModel(model)`, falling back to the first registered provider. Providers match by model-name prefix (see `supportedModelPrefixes` in each provider).
-- **Retry policy** ([GuidlioLMService.ts:585](src/llm-service/GuidlioLMService.ts#L585)): exponential backoff is applied **only** to `LLMTransientError`. Any other error — including `LLMPermanentError`, `LLMParseError`, `LLMSchemaError` — propagates immediately. Streaming (`callStream`) bypasses retries entirely; reconnection is the caller's responsibility.
+- **Provider selection** ([LMService.ts:65](src/llm-service/LMService.ts#L65)): if `config.defaultProvider` is set, it's used unconditionally (with a warning+fallback if the name doesn't resolve). Otherwise providers are probed via `supportsModel(model)`, falling back to the first registered provider. Providers match by model-name prefix (see `supportedModelPrefixes` in each provider).
+- **Retry policy** ([LMService.ts:585](src/llm-service/LMService.ts#L585)): exponential backoff is applied **only** to `LLMTransientError`. Any other error — including `LLMPermanentError`, `LLMParseError`, `LLMSchemaError` — propagates immediately. Streaming (`callStream`) bypasses retries entirely; reconnection is the caller's responsibility.
 - **JSON path** (`callJSON`): appends an explicit "return ONLY valid JSON" instruction to the last user message if one isn't already present, then parses. On parse failure it runs `repairJSON` (strips markdown fences, extracts the first `{...}` block) before throwing `LLMParseError`. Zod validation runs after parsing and throws `LLMSchemaError` on failure.
-- **Cache key** ([GuidlioLMService.ts:665](src/llm-service/GuidlioLMService.ts#L665)): sha256 of `idempotencyKey | promptId | version | JSON(variables) | model | temperature`. `temperature` uses a nullish check so `0` is a distinct key, not "unset". Cache is only read on `mode: "read_through"` and written on `read_through` or `refresh` — and only when `ttlSeconds` is provided. `enableCache: false` disables both sides.
+- **Cache key** ([LMService.ts:665](src/llm-service/LMService.ts#L665)): sha256 of `idempotencyKey | promptId | version | JSON(variables) | model | temperature`. `temperature` uses a nullish check so `0` is a distinct key, not "unset". Cache is only read on `mode: "read_through"` and written on `read_through` or `refresh` — and only when `ttlSeconds` is provided. `enableCache: false` disables both sides.
 - **PromptRegistry** is in-memory only. `register` indexes by `promptId@version` and also tracks a "latest" per id via numeric-then-lexicographic comparison. `buildMessages` interpolates `{variableName}` placeholders; objects/arrays get `JSON.stringify`'d, missing vars are left as literal `{name}`.
 
 Errors live in [src/llm-service/errors.ts](src/llm-service/errors.ts) — the transient/permanent distinction is load-bearing for retry behavior, so preserve it when adding new error paths.
 
 ### 2. `src/orchestrator/` — FSM pipeline framework
 
-`GuidlioOrchestrator` runs step-based pipelines with policy-driven transitions. The **central discipline** is the split between:
+`PipelineOrchestrator` runs step-based pipelines with policy-driven transitions. The **central discipline** is the split between:
 
 - **Step outcomes** (semantic: `ok` / `failed` / `redirect`) — what happened, decided by the step.
 - **Transitions** (control flow: `next` / `goto` / `retry` / `stop` / `fail` / `degrade`) — where to go, decided by the policy.
@@ -51,7 +51,7 @@ Steps return outcomes, **not** transitions. A new step type should extend the `S
 
 Other non-obvious behaviors:
 
-- **Exception handling** ([GuidlioOrchestrator.ts:305](src/orchestrator/GuidlioOrchestrator.ts#L305)): thrown errors inside a step are caught and converted to `{ type: 'failed', retryable: true }` outcomes — they do not crash the pipeline. The policy then decides what to do.
+- **Exception handling** ([PipelineOrchestrator.ts:305](src/orchestrator/PipelineOrchestrator.ts#L305)): thrown errors inside a step are caught and converted to `{ type: 'failed', retryable: true }` outcomes — they do not crash the pipeline. The policy then decides what to do.
 - **`maxTransitions`** (default 50, [constants.ts](src/orchestrator/constants.ts)) is the only guard against infinite `goto`/`retry` loops. Policies with unbounded retry counters **must** implement `reset()` (called at the start of each run) or state leaks between runs.
 - **`degrade` vs `stop`**: both terminate with `PIPELINE_STATUS.OK`, but `degrade` sets `result.degraded: true` on the run result — use it for graceful partial failures, not clean completions.
 - **Context adjustments**: the policy can return a `contextAdjustment` alongside a transition (`patch` / `override` / `none`) to mutate context during a transition rather than inside a step.

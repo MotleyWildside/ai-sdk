@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
 import { ok } from "../../src/orchestrator/statusHelpers";
 import { DefaultPolicy } from "../../src/orchestrator/policies/DefaultPolicy";
@@ -21,9 +21,9 @@ class ContextAdjustmentPolicy<C extends BaseContext> extends DefaultPolicy<C> {
 	}
 }
 
-describe("GuidlioOrchestrator — Context adjustments", () => {
+describe("PipelineOrchestrator — Context adjustments", () => {
 	it("CX-01: contextAdjustment type:none — ctx unchanged", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new OkStep()],
 			policy: () => new ContextAdjustmentPolicy({ type: "none" }),
 		});
@@ -32,7 +32,7 @@ describe("GuidlioOrchestrator — Context adjustments", () => {
 	});
 
 	it("CX-02: patch merges partial, other keys preserved", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new OkStep()],
 			policy: () => new ContextAdjustmentPolicy({ type: "patch", patch: { x: 1 } }),
 		});
@@ -44,7 +44,7 @@ describe("GuidlioOrchestrator — Context adjustments", () => {
 	});
 
 	it("CX-03: override without traceId — traceId restored", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new OkStep()],
 			policy: () => new ContextAdjustmentPolicy({
 				type: "override",
@@ -60,7 +60,7 @@ describe("GuidlioOrchestrator — Context adjustments", () => {
 	});
 
 	it("CX-04: override with traceId — supplied traceId used", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new OkStep()],
 			policy: () => new ContextAdjustmentPolicy({
 				type: "override",

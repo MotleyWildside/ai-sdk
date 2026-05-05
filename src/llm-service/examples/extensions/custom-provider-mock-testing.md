@@ -1,6 +1,6 @@
 # Custom Provider — Deterministic Mock for Consumer Tests
 
-When you write integration tests for code that calls `GuidlioLMService`, you want fully deterministic responses without making real API calls. `MockLLMProvider` is a scriptable in-process provider you own and ship alongside your consumer code — distinct from the internal `makeMockProvider` fixture that the `@guidlio/ai-sdk` library uses for its own unit tests. This provider lets you assert on the exact messages the service sent, simulate transient failures, test retry logic, and verify caching behaviour.
+When you write integration tests for code that calls `LMService`, you want fully deterministic responses without making real API calls. `MockLLMProvider` is a scriptable in-process provider you own and ship alongside your consumer code — distinct from the internal `makeMockProvider` fixture that the `@motleywildside/ai-sdk` library uses for its own unit tests. This provider lets you assert on the exact messages the service sent, simulate transient failures, test retry logic, and verify caching behaviour.
 
 ## Concepts covered
 
@@ -24,8 +24,8 @@ import type {
   LLMEmbedResponse,
   LLMEmbedBatchRequest,
   LLMEmbedBatchResponse,
-} from "@guidlio/ai-sdk";
-import { LLMTransientError } from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
+import { LLMTransientError } from "@motleywildside/ai-sdk";
 
 export class MockLLMProvider implements LLMProvider {
   readonly name = "mock";
@@ -58,7 +58,7 @@ export class MockLLMProvider implements LLMProvider {
   }
 
   // Make the next `n` calls fail with LLMTransientError before succeeding.
-  // Useful for testing retry logic in GuidlioLMService.
+  // Useful for testing retry logic in LMService.
   simulateTransientError(n: number): this {
     this.transientErrorsRemaining = n;
     return this;
@@ -154,12 +154,12 @@ export class MockLLMProvider implements LLMProvider {
 
 ```typescript
 import { describe, it, expect, beforeEach } from "vitest";
-import { GuidlioLMService, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, PromptRegistry } from "@motleywildside/ai-sdk";
 import { MockLLMProvider } from "./MockLLMProvider";
 
 describe("summarise pipeline", () => {
   let mock: MockLLMProvider;
-  let llm: GuidlioLMService;
+  let llm: LMService;
 
   beforeEach(() => {
     const registry = new PromptRegistry();
@@ -173,7 +173,7 @@ describe("summarise pipeline", () => {
     });
 
     mock = new MockLLMProvider();
-    llm = new GuidlioLMService({ providers: [mock], promptRegistry: registry });
+    llm = new LMService({ providers: [mock], promptRegistry: registry });
   });
 
   it("sends the interpolated user message to the provider", async () => {
@@ -203,7 +203,7 @@ describe("summarise pipeline", () => {
 ### Verify that caching prevents a second provider call
 
 ```typescript
-import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "@guidlio/ai-sdk";
+import { LMService, PromptRegistry, InMemoryCacheProvider } from "@motleywildside/ai-sdk";
 
 it("cache hit skips the provider on the second call", async () => {
   const registry = new PromptRegistry();
@@ -219,7 +219,7 @@ it("cache hit skips the provider on the second call", async () => {
   // Queue only one response — a second provider call would throw (empty queue)
   mock.queue([{ text: "Hello, world!" }]);
 
-  const llm = new GuidlioLMService({
+  const llm = new LMService({
     providers: [mock],
     promptRegistry: registry,
     cacheProvider: new InMemoryCacheProvider(),
@@ -257,7 +257,7 @@ it("retries on transient errors and eventually succeeds", async () => {
   mock.simulateTransientError(2);
   mock.queue([{ text: "Success after retries." }]);
 
-  const llm = new GuidlioLMService({
+  const llm = new LMService({
     providers: [mock],
     promptRegistry: registry,
     maxAttempts: 3,
@@ -274,7 +274,7 @@ it("retries on transient errors and eventually succeeds", async () => {
 
 ## Distinction from `makeMockProvider`
 
-`makeMockProvider` (in `tests/fixtures/`) is a factory used by `@guidlio/ai-sdk`'s own internal test suite. It is not part of the public API and may change between releases. `MockLLMProvider` above is code you own in your consumer project — import it from your own source tree, not from `@guidlio/ai-sdk`.
+`makeMockProvider` (in `tests/fixtures/`) is a factory used by `@motleywildside/ai-sdk`'s own internal test suite. It is not part of the public API and may change between releases. `MockLLMProvider` above is code you own in your consumer project — import it from your own source tree, not from `@motleywildside/ai-sdk`.
 
 ## What to change next
 

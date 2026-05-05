@@ -13,7 +13,7 @@ When you want to call Anthropic's Claude models directly through the official `@
 
 ## Installation
 
-`@anthropic-ai/sdk` is a peer dependency — install it alongside `@guidlio/ai-sdk`:
+`@anthropic-ai/sdk` is a peer dependency — install it alongside `@motleywildside/ai-sdk`:
 
 ```bash
 npm install @anthropic-ai/sdk
@@ -32,8 +32,8 @@ import type {
   LLMEmbedResponse,
   LLMEmbedBatchRequest,
   LLMEmbedBatchResponse,
-} from "@guidlio/ai-sdk";
-import { LLMTransientError, LLMPermanentError } from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
+import { LLMTransientError, LLMPermanentError } from "@motleywildside/ai-sdk";
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = "anthropic";
@@ -192,10 +192,10 @@ export class AnthropicProvider implements LLMProvider {
 }
 ```
 
-## Wiring into GuidlioLMService
+## Wiring into LMService
 
 ```typescript
-import { GuidlioLMService, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, PromptRegistry } from "@motleywildside/ai-sdk";
 import { AnthropicProvider } from "./AnthropicProvider";
 
 const registry = new PromptRegistry();
@@ -209,7 +209,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new AnthropicProvider(process.env.ANTHROPIC_API_KEY!)],
   promptRegistry: registry,
 });

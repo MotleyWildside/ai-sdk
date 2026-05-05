@@ -1,10 +1,10 @@
 # Express Integration
 
-How to wire `@guidlio/ai-sdk` into an Express application: a singleton service shared across requests, per-request trace IDs for log correlation, and AbortSignal wired to the HTTP connection lifecycle.
+How to wire `@motleywildside/ai-sdk` into an Express application: a singleton service shared across requests, per-request trace IDs for log correlation, and AbortSignal wired to the HTTP connection lifecycle.
 
 **Concepts covered:**
 
-- Singleton `GuidlioLMService` at module level
+- Singleton `LMService` at module level
 - Per-request `traceId` from an incoming header or auto-generated
 - `AbortController` tied to `req.on("close")` for client-disconnect cancellation
 - Error mapping to HTTP status codes
@@ -17,7 +17,7 @@ Initialize the service once at module load. Providers are stateless and the `InM
 
 ```typescript
 // src/llm.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -30,7 +30,7 @@ registry.register({
   output: { type: "text" },
 });
 
-export const llm = new GuidlioLMService({
+export const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
   logger: new ConsoleLogger(),
@@ -46,7 +46,7 @@ export const llm = new GuidlioLMService({
 // src/routes/summarize.ts
 import { Router } from "express";
 import { llm } from "../llm";
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@motleywildside/ai-sdk";
 
 export const router = Router();
 

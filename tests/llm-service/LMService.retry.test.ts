@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { LLMTransientError, LLMPermanentError, LLMParseError } from "../../src/llm-service/errors";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockLogger } from "../fixtures/mockLogger";
 import { makePrompt } from "../fixtures/prompts";
 
-describe("GuidlioLMService — Retry logic", () => {
+describe("LMService — Retry logic", () => {
 	let reg: PromptRegistry;
 
 	beforeEach(() => {
@@ -22,7 +22,7 @@ describe("GuidlioLMService — Retry logic", () => {
 	function makeRetrySvc(opts: { maxAttempts?: number; baseDelay?: number; maxDelay?: number } = {}) {
 		const log = makeMockLogger();
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({
+		const svc = new LMService({
 			providers: [provider],
 			promptRegistry: reg,
 			logger: log,
@@ -42,7 +42,7 @@ describe("GuidlioLMService — Retry logic", () => {
 				return { text: "ok", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" };
 			},
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		const p = svc.callText({ promptId: "p1" });
 		await vi.advanceTimersByTimeAsync(10000);
 		const result = await p;
@@ -54,7 +54,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { throw new LLMTransientError({ message: "always fails", provider: "mock", model: "mock-model" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		const rejectPromise = expect(svc.callText({ promptId: "p1" })).rejects.toBeInstanceOf(LLMTransientError);
 		await vi.advanceTimersByTimeAsync(10000);
 		await rejectPromise;
@@ -65,7 +65,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { calls++; throw new LLMPermanentError({ message: "auth fail", provider: "mock", model: "mock-model" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		await expect(svc.callText({ promptId: "p1" })).rejects.toBeInstanceOf(LLMPermanentError);
 		expect(calls).toBe(1);
 	});
@@ -75,7 +75,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { calls++; throw new LLMParseError({ message: "bad json", provider: "mock", model: "mock-model", rawOutput: "garbage" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		await expect(svc.callText({ promptId: "p1" })).rejects.toBeInstanceOf(LLMParseError);
 		expect(calls).toBe(1);
 	});
@@ -85,7 +85,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { calls++; throw new Error("generic"); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		await expect(svc.callText({ promptId: "p1" })).rejects.toThrow("generic");
 		expect(calls).toBe(1);
 	});
@@ -95,7 +95,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { calls++; throw new LLMTransientError({ message: "err", provider: "mock", model: "mock-model" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 1, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 1, retryBaseDelayMs: 10 });
 		await expect(svc.callText({ promptId: "p1" })).rejects.toBeInstanceOf(LLMTransientError);
 		expect(calls).toBe(1);
 	});
@@ -105,7 +105,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			callImpl: async () => { calls++; throw new LLMTransientError({ message: "err", provider: "mock", model: "mock-model" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 5, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 5, retryBaseDelayMs: 10 });
 		const rejectPromise = expect(svc.callText({ promptId: "p1" })).rejects.toBeInstanceOf(LLMTransientError);
 		await vi.advanceTimersByTimeAsync(100_000);
 		await rejectPromise;
@@ -124,7 +124,7 @@ describe("GuidlioLMService — Retry logic", () => {
 				return { text: "ok", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" };
 			},
 		});
-		const svc = new GuidlioLMService({
+		const svc = new LMService({
 			providers: [provider],
 			promptRegistry: reg,
 			maxAttempts: 5,
@@ -147,7 +147,7 @@ describe("GuidlioLMService — Retry logic", () => {
 				return { text: "ok", raw: {}, usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, finishReason: "stop" };
 			},
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, logger: log, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, logger: log, maxAttempts: 3, retryBaseDelayMs: 10 });
 		const p = svc.callText({ promptId: "p1" });
 		await vi.advanceTimersByTimeAsync(10_000);
 		await p;
@@ -159,7 +159,7 @@ describe("GuidlioLMService — Retry logic", () => {
 		const provider = makeMockProvider({
 			streamImpl: async () => { throw new LLMTransientError({ message: "err", provider: "mock", model: "mock-model" }); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3, retryBaseDelayMs: 10 });
 		await expect(svc.callStream({ promptId: "p1" })).rejects.toBeInstanceOf(LLMTransientError);
 		expect(provider.callStream).toHaveBeenCalledOnce();
 	});

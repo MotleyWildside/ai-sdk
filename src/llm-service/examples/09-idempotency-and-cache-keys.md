@@ -38,7 +38,7 @@ Two calls share a cache entry only when every one of these factors is identical.
 A common surprise: `temperature: 0` (deterministic sampling) produces a **different cache key** than omitting `temperature` entirely. The service uses a nullish check (`?? undefined`) not a falsy check, so `0` is treated as an explicit value.
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -50,7 +50,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });

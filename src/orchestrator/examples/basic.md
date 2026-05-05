@@ -17,7 +17,7 @@ pipeline with no custom policy.
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface UserContext extends BaseContext {
   userId: string;
@@ -33,7 +33,7 @@ interface UserContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@motleywildside/ai-sdk";
 
 class ValidateUserStep extends PipelineStep<UserContext> {
   readonly name = "validate-user";
@@ -83,9 +83,9 @@ class EnrichContextStep extends PipelineStep<UserContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<UserContext>({
+const orchestrator = new PipelineOrchestrator<UserContext>({
   steps: [new ValidateUserStep(), new FetchProfileStep(), new EnrichContextStep()],
   // No policy or observer specified — defaults to NoopPipelineObserver and
   // DefaultPolicy (ok → next, failed → fail immediately).

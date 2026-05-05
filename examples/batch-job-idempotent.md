@@ -17,12 +17,12 @@ Long-running batch jobs that call LLMs are expensive to restart from scratch. By
 
 ```typescript
 import {
-  GuidlioLMService,
+  LMService,
   OpenAIProvider,
   PromptRegistry,
   ConsoleLogger,
   type CacheProvider,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 import { createClient, type RedisClientType } from "redis";
 
 // Redis-backed cache — survives process restarts, shared across workers
@@ -72,7 +72,7 @@ registry.register({
 
 const logger = new ConsoleLogger();
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
   cacheProvider,

@@ -8,7 +8,7 @@ import type {
 	ContextAdjustment,
 	StepResult,
 	StepRunMeta,
-	GuidlioOrchestratorConfig,
+	PipelineOrchestratorConfig,
 	PipelineRunOptions,
 	BaseContext,
 } from "./types";
@@ -19,7 +19,7 @@ import { PIPELINE_STATUS, TRANSITION_TYPE, DEFAULT_MAX_TRANSITIONS } from "./con
 import { DefaultPolicy } from "./policies/DefaultPolicy";
 import { logger } from "../logger/logger";
 
-export class GuidlioOrchestrator<C extends BaseContext> {
+export class PipelineOrchestrator<C extends BaseContext> {
 	private readonly stepsByName: Map<string, PipelineStep<C>>;
 	private readonly stepOrder: string[];
 	private readonly observer: PipelineObserver;
@@ -27,7 +27,7 @@ export class GuidlioOrchestrator<C extends BaseContext> {
 	private readonly maxTransitions: number;
 	private readonly stepTimeoutMs: number | undefined;
 
-	constructor(config: GuidlioOrchestratorConfig<C>) {
+	constructor(config: PipelineOrchestratorConfig<C>) {
 		const stepsByName = new Map<string, PipelineStep<C>>();
 		const stepOrder: string[] = [];
 
@@ -62,7 +62,7 @@ export class GuidlioOrchestrator<C extends BaseContext> {
 
 		if (opts?.traceId && initialCtx.traceId && opts.traceId !== initialCtx.traceId) {
 			logger.warn(
-				`[GuidlioOrchestrator] opts.traceId ("${opts.traceId}") differs from ctx.traceId ("${initialCtx.traceId}"). opts.traceId takes precedence.`,
+				`[PipelineOrchestrator] opts.traceId ("${opts.traceId}") differs from ctx.traceId ("${initialCtx.traceId}"). opts.traceId takes precedence.`,
 			);
 		}
 

@@ -147,9 +147,9 @@ export interface ResolvedCall {
 }
 
 /**
- * Configuration for GuidlioLMService
+ * Configuration for LMService
  */
-export interface GuidlioLMServiceConfig {
+export interface LMServiceConfig {
 	/**
 	 * List of available providers (required)
 	 */

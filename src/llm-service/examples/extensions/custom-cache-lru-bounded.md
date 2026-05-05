@@ -13,7 +13,7 @@ The built-in `InMemoryCacheProvider` grows without bound — in a long-running s
 ## Implementation
 
 ```typescript
-import type { CacheProvider } from "@guidlio/ai-sdk";
+import type { CacheProvider } from "@motleywildside/ai-sdk";
 
 interface CacheEntry<T> {
   value: T;
@@ -110,10 +110,10 @@ export class LruCacheProvider implements CacheProvider {
 }
 ```
 
-## Wiring into GuidlioLMService
+## Wiring into LMService
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 import { LruCacheProvider } from "./LruCacheProvider";
 
 const registry = new PromptRegistry();
@@ -129,7 +129,7 @@ registry.register({
 // Hold at most 1000 unique prompt results in memory; evict oldest on overflow
 const cacheProvider = new LruCacheProvider({ maxEntries: 1000 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   cacheProvider,
   promptRegistry: registry,

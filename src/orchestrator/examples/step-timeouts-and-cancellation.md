@@ -24,7 +24,7 @@ Set `stepTimeoutMs` on the orchestrator config. The orchestrator races the step'
 
 ```typescript
 import {
-  GuidlioOrchestrator,
+  PipelineOrchestrator,
   RetryPolicy,
   PipelineStep,
   StepResult,
@@ -32,7 +32,7 @@ import {
   ok,
   failed,
   BaseContext,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 interface FetchContext extends BaseContext {
   url: string;
@@ -76,7 +76,7 @@ class FetchStep extends PipelineStep<FetchContext> {
   }
 }
 
-const orchestrator = new GuidlioOrchestrator<FetchContext>({
+const orchestrator = new PipelineOrchestrator<FetchContext>({
   steps: [new FetchStep()],
   policy: () => new RetryPolicy({ maxAttempts: 3 }),
   // Each step gets at most 4 seconds; timeout = non-retryable failed outcome
@@ -91,7 +91,7 @@ const orchestrator = new GuidlioOrchestrator<FetchContext>({
 `stepTimeoutMs` races the Promise, but the step's async work keeps running in the background unless it checks the signal. Pass `meta.signal` into every long-running call inside the step:
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 interface SummarizeContext extends BaseContext {
   text: string;
@@ -108,7 +108,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -157,9 +157,9 @@ The distinction matters for `RetryPolicy`:
 If you want timeouts to be retryable (e.g., each retry gets a fresh 4 s window), override the `retryIf` predicate in `RetryPolicy`:
 
 ```typescript
-import type { StepOutcomeFailed } from "@guidlio/ai-sdk";
+import type { StepOutcomeFailed } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<FetchContext>({
+const orchestrator = new PipelineOrchestrator<FetchContext>({
   steps: [new FetchStep()],
   policy: () =>
     new RetryPolicy({
@@ -179,7 +179,7 @@ const orchestrator = new GuidlioOrchestrator<FetchContext>({
 Pass a signal to `orchestrator.run()` via `PipelineRunOptions`. The orchestrator checks this signal before starting each step. If aborted, it throws `PipelineAbortedError` (returned as `result.error`, not thrown from `run()`). The same signal is also forwarded to `meta.signal` inside each step, so in-flight async work is cancelled too.
 
 ```typescript
-import { PipelineAbortedError } from "@guidlio/ai-sdk";
+import { PipelineAbortedError } from "@motleywildside/ai-sdk";
 
 const controller = new AbortController();
 

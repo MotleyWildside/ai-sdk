@@ -8,7 +8,7 @@ In production you often want to maintain prompt definitions outside the applicat
 - Loading from an HTTP endpoint at startup (async)
 - Hot-reload: swapping the active registry on a background interval so the service picks up new prompts without a restart
 - Why `output.schema` (Zod) must be attached in code after deserialising from JSON
-- Injecting the registry via `GuidlioLMServiceConfig.promptRegistry`
+- Injecting the registry via `LMServiceConfig.promptRegistry`
 
 ## 1. Loading from a JSON file at startup
 
@@ -40,8 +40,8 @@ Keep prompt templates in a file that can be edited and deployed separately from 
 ```typescript
 import { readFileSync } from "fs";
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
-import type { PromptDefinition } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
+import type { PromptDefinition } from "@motleywildside/ai-sdk";
 
 // JSON-parsed definitions lack the Zod schema instance — attach them in code
 const ClassifyOutputSchema = z.object({
@@ -72,7 +72,7 @@ for (const def of rawDefinitions) {
   }
 }
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -86,8 +86,8 @@ Use this when a central service owns prompt versions and pushes them to all cons
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
-import type { PromptDefinition } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
+import type { PromptDefinition } from "@motleywildside/ai-sdk";
 
 const SentimentSchema = z.object({ sentiment: z.enum(["positive", "negative", "neutral"]) });
 
@@ -126,7 +126,7 @@ async function loadRegistryFromApi(apiUrl: string): Promise<PromptRegistry> {
 // Await at startup — the service is not constructed until prompts are loaded
 const registry = await loadRegistryFromApi(process.env.PROMPTS_API_URL!);
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -138,8 +138,8 @@ Export a `getRegistry()` getter backed by a module-level variable. A background 
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
-import type { PromptDefinition } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
+import type { PromptDefinition } from "@motleywildside/ai-sdk";
 
 const schemaMap: Record<string, z.ZodSchema<unknown>> = {
   "classify-ticket": z.object({
@@ -201,24 +201,24 @@ if (typeof reloadTimer === "object" && "unref" in reloadTimer) {
 }
 ```
 
-Because `GuidlioLMService` is constructed once with a fixed `promptRegistry` reference, pass the getter's return value per-request rather than at construction time. One way to do this is via a thin wrapper function:
+Because `LMService` is constructed once with a fixed `promptRegistry` reference, pass the getter's return value per-request rather than at construction time. One way to do this is via a thin wrapper function:
 
 ```typescript
 // service.ts
-import { GuidlioLMService, OpenAIProvider } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider } from "@motleywildside/ai-sdk";
 import { getRegistry } from "./promptLoader";
 
 // The service itself holds no registry reference — it receives one each call
 function makeLlmService() {
-  return new GuidlioLMService({
+  return new LMService({
     providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
     promptRegistry: getRegistry(), // called at construction time
   });
 }
 
 // Re-create the service on each hot-reload cycle, or use a proxy pattern:
-export function getLlmService(): GuidlioLMService {
-  // For simplicity, construct fresh on each call — GuidlioLMService is cheap to construct
+export function getLlmService(): LMService {
+  // For simplicity, construct fresh on each call — LMService is cheap to construct
   return makeLlmService();
 }
 ```
@@ -226,8 +226,8 @@ export function getLlmService(): GuidlioLMService {
 Or, pass a registry proxy that delegates to `getRegistry()` on every operation:
 
 ```typescript
-import type { PromptDefinition, PromptRegistry as IPromptRegistry } from "@guidlio/ai-sdk";
-import { PromptRegistry } from "@guidlio/ai-sdk";
+import type { PromptDefinition, PromptRegistry as IPromptRegistry } from "@motleywildside/ai-sdk";
+import { PromptRegistry } from "@motleywildside/ai-sdk";
 import { getRegistry } from "./promptLoader";
 
 // A thin proxy that forwards all calls to the current active registry
@@ -247,7 +247,7 @@ class RegistryProxy extends PromptRegistry {
 }
 
 // Construct once — every LLM call transparently uses the latest loaded registry
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: new RegistryProxy(),
 });

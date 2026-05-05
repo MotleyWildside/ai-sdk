@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { GuidlioOrchestrator } from "../../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../../src/orchestrator/PipelineOrchestrator";
 import { DefaultPolicy } from "../../../src/orchestrator/policies/DefaultPolicy";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext, PolicyDecisionInput, PolicyDecisionOutput, StepOutcomeFailed, StepOutcomeOk } from "../../../src/orchestrator/types";
 import { ok, failed } from "../../../src/orchestrator/statusHelpers";
@@ -60,7 +60,7 @@ class OkStep extends PipelineStep<Ctx> {
 
 describe("CustomPolicy (CircuitBreakerPolicy) integration", () => {
 	it("CPL-01: custom policy returns degrade after 3 failures", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new AlwaysFailStep("s")],
 			policy: () => new CircuitBreakerPolicy(),
 			maxTransitions: 20,
@@ -98,7 +98,7 @@ describe("CustomPolicy (CircuitBreakerPolicy) integration", () => {
 	});
 
 	it("CPL-03: policy factory used — two sequential runs don't share state", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new AlwaysFailStep("s")],
 			policy: () => new CircuitBreakerPolicy(),
 			maxTransitions: 20,
@@ -125,7 +125,7 @@ describe("CustomPolicy (CircuitBreakerPolicy) integration", () => {
 			}
 		}
 		type AdjCtx = BaseContext & { extra?: string };
-		const orch = new GuidlioOrchestrator<AdjCtx>({
+		const orch = new PipelineOrchestrator<AdjCtx>({
 			steps: [{
 				name: "s",
 				run: async (ctx) => ok({ ctx }),
@@ -137,7 +137,7 @@ describe("CustomPolicy (CircuitBreakerPolicy) integration", () => {
 			readonly name = "s";
 			async run(ctx: AdjCtx): Promise<StepResult<AdjCtx>> { return ok({ ctx }); }
 		}
-		const orch2 = new GuidlioOrchestrator<AdjCtx>({
+		const orch2 = new PipelineOrchestrator<AdjCtx>({
 			steps: [new S()],
 			policy: () => new AdjustPolicy<AdjCtx>(),
 		});

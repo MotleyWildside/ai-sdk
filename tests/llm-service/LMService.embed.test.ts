@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { LLMTransientError } from "../../src/llm-service/errors";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockCache } from "../fixtures/mockCache";
 
-describe("GuidlioLMService — embed / embedBatch", () => {
+describe("LMService — embed / embedBatch", () => {
 	it("E-01: embed returns embedding, usage, model", async () => {
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		const result = await svc.embed({ text: "hello", model: "mock-model" });
 		expect(Array.isArray(result.embedding)).toBe(true);
 		expect(result.model).toBe("mock-model");
@@ -15,7 +15,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 
 	it("E-02: embedBatch with 10 texts returns 10 embeddings", async () => {
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		const texts = Array.from({ length: 10 }, (_, i) => `text${i}`);
 		const result = await svc.embedBatch({ texts, model: "mock-model" });
 		expect(result.embeddings).toHaveLength(10);
@@ -23,7 +23,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 
 	it("E-03: dimensions forwarded to provider", async () => {
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		await svc.embed({ text: "hi", model: "mock-model", dimensions: 512 });
 		const [req] = provider.embed.mock.calls[0];
 		expect(req.dimensions).toBe(512);
@@ -31,7 +31,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 
 	it("E-04: taskType forwarded to provider", async () => {
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		await svc.embed({ text: "hi", model: "mock-model", taskType: "RETRIEVAL_QUERY" });
 		const [req] = provider.embed.mock.calls[0];
 		expect(req.taskType).toBe("RETRIEVAL_QUERY");
@@ -41,7 +41,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 		const provider = makeMockProvider({
 			embedImpl: async () => { throw new Error("embed not supported"); },
 		});
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		await expect(svc.embed({ text: "hi", model: "mock-model" })).rejects.toThrow("embed not supported");
 	});
 
@@ -54,7 +54,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 				return { embedding: [0.1], usage: { totalTokens: 1 } };
 			},
 		});
-		const svc = new GuidlioLMService({ providers: [provider], maxAttempts: 3, retryBaseDelayMs: 0 });
+		const svc = new LMService({ providers: [provider], maxAttempts: 3, retryBaseDelayMs: 0 });
 		const result = await svc.embed({ text: "hi", model: "mock-model" });
 		expect(result.embedding).toEqual([0.1]);
 		expect(attempts).toBe(3);
@@ -63,7 +63,7 @@ describe("GuidlioLMService — embed / embedBatch", () => {
 	it("E-07: embed does not interact with cache or prompt registry", async () => {
 		const mockCache = makeMockCache();
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider], cacheProvider: mockCache });
+		const svc = new LMService({ providers: [provider], cacheProvider: mockCache });
 		await svc.embed({ text: "hi", model: "mock-model" });
 		expect(mockCache.get).not.toHaveBeenCalled();
 		expect(mockCache.set).not.toHaveBeenCalled();

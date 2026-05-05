@@ -22,7 +22,7 @@ classify ──► safe    ──goto──► fast-approve ──► finalize
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 type Classification = "safe" | "review" | "reject";
 
@@ -39,7 +39,7 @@ interface ModerationContext extends BaseContext {
 ## Observer — log every routing decision
 
 ```typescript
-import { NoopPipelineObserver, PipelineObserver } from "@guidlio/ai-sdk";
+import { NoopPipelineObserver, PipelineObserver } from "@motleywildside/ai-sdk";
 
 class TransitionLogger extends NoopPipelineObserver implements PipelineObserver {
   onTransition(params: {
@@ -68,7 +68,7 @@ override the hooks you care about.
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@motleywildside/ai-sdk";
 
 class ClassifyStep extends PipelineStep<ModerationContext> {
   readonly name = "classify";
@@ -130,9 +130,9 @@ class FinalizeStep extends PipelineStep<ModerationContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RedirectRoutingPolicy } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<ModerationContext>({
+const orchestrator = new PipelineOrchestrator<ModerationContext>({
   steps: [
     new ClassifyStep(),
     // All possible routing targets must be registered even though only one

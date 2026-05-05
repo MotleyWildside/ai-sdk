@@ -14,7 +14,7 @@ export type RouteMap = Record<string, string>;
  * static route table. All other outcomes fall through to `DefaultPolicy` defaults.
  *
  * ```ts
- * new GuidlioOrchestrator({
+ * new PipelineOrchestrator({
  *   steps: [...],
  *   policy: () => new RedirectRoutingPolicy({
  *     'use_tool': 'act',

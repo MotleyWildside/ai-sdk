@@ -1,6 +1,6 @@
 # Structured Extraction with Orchestrator-Level Retry
 
-Messy user input — copy-pasted invoice text, multi-language form submissions, OCR output — often produces malformed JSON that passes the parse step but fails schema validation. `GuidlioLMService` automatically retries `LLMTransientError` (network issues, rate limits), but it does not retry `LLMSchemaError`. This recipe shows how to catch a schema mismatch at the orchestrator level and automatically re-run extraction with a repair hint that tells the model exactly what it got wrong.
+Messy user input — copy-pasted invoice text, multi-language form submissions, OCR output — often produces malformed JSON that passes the parse step but fails schema validation. `LMService` automatically retries `LLMTransientError` (network issues, rate limits), but it does not retry `LLMSchemaError`. This recipe shows how to catch a schema mismatch at the orchestrator level and automatically re-run extraction with a repair hint that tells the model exactly what it got wrong.
 
 **Concepts covered:**
 
@@ -15,7 +15,7 @@ Messy user input — copy-pasted invoice text, multi-language form submissions, 
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface ExtractionContext extends BaseContext {
   rawText: string;
@@ -38,7 +38,7 @@ interface InvoiceData {
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const InvoiceSchema = z.object({
   invoiceNumber: z.string().min(1),
@@ -82,7 +82,7 @@ registry.register({
   output: { type: "json" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -102,12 +102,12 @@ import {
   redirect,
   LLMSchemaError,
   LLMParseError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class ExtractStep extends PipelineStep<ExtractionContext> {
   readonly name = "extract";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -147,7 +147,7 @@ class ExtractStep extends PipelineStep<ExtractionContext> {
 class RepairStep extends PipelineStep<ExtractionContext> {
   readonly name = "repair";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -179,9 +179,9 @@ class RepairStep extends PipelineStep<ExtractionContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RedirectRoutingPolicy } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<ExtractionContext>({
+const orchestrator = new PipelineOrchestrator<ExtractionContext>({
   steps: [new ExtractStep(llm), new RepairStep(llm)],
   // redirect({ message: "repair" }) from ExtractStep routes to the repair step.
   // If RepairStep returns ok(), the pipeline stops with status "ok".
@@ -224,7 +224,7 @@ if (result.status === "ok") {
 
 ## Why this is different from service-level retry
 
-`GuidlioLMService` retry only fires on `LLMTransientError` — network timeouts, 429 rate limits, and 5xx responses. A `LLMSchemaError` means the model responded successfully but produced the wrong structure: retrying with the same prompt would likely produce the same wrong structure. The orchestrator-level repair pattern is more effective because it changes the prompt to include the validation feedback, giving the model a concrete description of what to fix.
+`LMService` retry only fires on `LLMTransientError` — network timeouts, 429 rate limits, and 5xx responses. A `LLMSchemaError` means the model responded successfully but produced the wrong structure: retrying with the same prompt would likely produce the same wrong structure. The orchestrator-level repair pattern is more effective because it changes the prompt to include the validation feedback, giving the model a concrete description of what to fix.
 
 ---
 

@@ -1,6 +1,6 @@
 # Custom Logger
 
-`GuidlioLMService` emits structured log entries for every call, retry, and cache event. By default it discards all output. Inject an `LLMLogger` implementation to route those entries to your existing logging infrastructure — whether that is `pino`, `winston`, a container-friendly JSON stream, or anything else.
+`LMService` emits structured log entries for every call, retry, and cache event. By default it discards all output. Inject an `LLMLogger` implementation to route those entries to your existing logging infrastructure — whether that is `pino`, `winston`, a container-friendly JSON stream, or anything else.
 
 ## Concepts covered
 
@@ -9,7 +9,7 @@
 - A `WinstonAdapter` wrapping `winston` — forwarding `meta` as the second argument
 - A `StructuredJsonLogger` writing line-delimited JSON to stdout for containers and Lambda
 - Why `meta.responseBody` should not be logged (model output may contain sensitive data)
-- Injecting a logger via `GuidlioLMServiceConfig.logger`
+- Injecting a logger via `LMServiceConfig.logger`
 
 ## The LLMLogger interface
 
@@ -27,9 +27,9 @@ The interface is intentionally narrow. Each method receives a human-readable `me
 
 ```typescript
 import type pino from "pino";
-import type { LLMLogger } from "@guidlio/ai-sdk";
+import type { LLMLogger } from "@motleywildside/ai-sdk";
 
-// pino is a peer dependency — install it alongside @guidlio/ai-sdk:
+// pino is a peer dependency — install it alongside @motleywildside/ai-sdk:
 // npm install pino
 
 export class PinoAdapter implements LLMLogger {
@@ -58,12 +58,12 @@ Usage:
 
 ```typescript
 import pino from "pino";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 import { PinoAdapter } from "./PinoAdapter";
 
 const pinoInstance = pino({ level: "info" });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: new PromptRegistry(),
   logger: new PinoAdapter(pinoInstance),
@@ -74,9 +74,9 @@ const llm = new GuidlioLMService({
 
 ```typescript
 import type winston from "winston";
-import type { LLMLogger } from "@guidlio/ai-sdk";
+import type { LLMLogger } from "@motleywildside/ai-sdk";
 
-// winston is a peer dependency — install it alongside @guidlio/ai-sdk:
+// winston is a peer dependency — install it alongside @motleywildside/ai-sdk:
 // npm install winston
 
 export class WinstonAdapter implements LLMLogger {
@@ -113,7 +113,7 @@ const winstonInstance = winston.createLogger({
   format: winston.format.json(),
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: new PromptRegistry(),
   logger: new WinstonAdapter(winstonInstance),
@@ -125,7 +125,7 @@ const llm = new GuidlioLMService({
 For containerised workloads and Lambda functions where a log aggregator reads stdout line-by-line, write plain newline-delimited JSON with no dependencies.
 
 ```typescript
-import type { LLMLogger } from "@guidlio/ai-sdk";
+import type { LLMLogger } from "@motleywildside/ai-sdk";
 
 type LogLevel = "info" | "warn" | "error";
 
@@ -177,10 +177,10 @@ Sample output for a successful call:
 Usage:
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 import { StructuredJsonLogger } from "./StructuredJsonLogger";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: new PromptRegistry(),
   logger: new StructuredJsonLogger(),

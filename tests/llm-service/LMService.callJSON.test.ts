@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { z } from "zod";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { LLMParseError, LLMSchemaError } from "../../src/llm-service/errors";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makePrompt, makeJsonPrompt } from "../fixtures/prompts";
 
-describe("GuidlioLMService — callJSON", () => {
+describe("LMService — callJSON", () => {
 	let reg: PromptRegistry;
 
 	beforeEach(() => {
@@ -22,7 +22,7 @@ describe("GuidlioLMService — callJSON", () => {
 				finishReason: "stop",
 			}),
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg });
 		return { provider, svc };
 	}
 

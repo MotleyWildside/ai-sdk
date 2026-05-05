@@ -4,7 +4,7 @@ Distributed tracing gives you a timeline of every step in a pipeline run, with
 durations, outcomes, and error details, correlated under a single root span. This
 example shows how to implement `PipelineObserver` using the `@opentelemetry/api`
 package (the vendor-neutral API layer, not a concrete SDK) to open a root span
-per run and a child span per step. When a step also calls `GuidlioLMService`, the
+per run and a child span per step. When a step also calls `LMService`, the
 same `ctx.traceId` is passed as the LLM call's `traceId` so LLM log entries appear
 in the same correlation context.
 
@@ -36,7 +36,7 @@ application startup — the observer code is unaware of exporters or processors.
 
 ```typescript
 import { trace, context, SpanStatusCode, Span, Tracer } from "@opentelemetry/api";
-import { PipelineObserver, StepOutcome, Transition } from "@guidlio/ai-sdk";
+import { PipelineObserver, StepOutcome, Transition } from "@motleywildside/ai-sdk";
 
 class TracingObserver implements PipelineObserver {
   private readonly tracer: Tracer;
@@ -162,12 +162,12 @@ class TracingObserver implements PipelineObserver {
 
 ## Context and LLM correlation
 
-Pass `ctx.traceId` to every `GuidlioLMService` call so LLM log entries carry the
+Pass `ctx.traceId` to every `LMService` call so LLM log entries carry the
 same correlation key as the pipeline spans. The LLM service logs it alongside model
 name and token counts, giving you a single string to grep in your log aggregator.
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface ProcessContext extends BaseContext {
   documentId: string;
@@ -182,14 +182,14 @@ import {
   StepRunMeta,
   ok,
   failed,
-  GuidlioLMService,
+  LMService,
   LLMTransientError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class AnalyzeStep extends PipelineStep<ProcessContext> {
   readonly name = "analyze";
 
-  constructor(private readonly llm: GuidlioLMService) {
+  constructor(private readonly llm: LMService) {
     super();
   }
 
@@ -220,18 +220,18 @@ class AnalyzeStep extends PipelineStep<ProcessContext> {
 ## Wiring
 
 `TracingObserver` is stateful — it holds open `Span` objects between `onStepStart`
-and `onStepFinish`. Create one instance per `GuidlioOrchestrator` instantiation.
+and `onStepFinish`. Create one instance per `PipelineOrchestrator` instantiation.
 For concurrent pipelines running in the same process, each orchestrator should have
 its own observer, or you must ensure the `traceId` is unique per run (it always is
 when you let the orchestrator generate it or pass a UUID).
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RetryPolicy } from "@motleywildside/ai-sdk";
 
 // Create one observer per orchestrator — not one per run
 const tracingObserver = new TracingObserver("my-service");
 
-const orchestrator = new GuidlioOrchestrator<ProcessContext>({
+const orchestrator = new PipelineOrchestrator<ProcessContext>({
   steps: [new AnalyzeStep(llm)],
   observer: tracingObserver,
   policy: () => new RetryPolicy({ maxAttempts: 2 }),

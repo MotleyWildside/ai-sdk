@@ -31,7 +31,7 @@ const defaultBackoff = (attempt: number) => Math.min(100 * 2 ** (attempt - 1), 3
  *
  * Usage:
  * ```ts
- * new GuidlioOrchestrator({
+ * new PipelineOrchestrator({
  *   steps: [...],
  *   policy: () => new RetryPolicy({ maxAttempts: 5, backoffMs: attempt => attempt * 500 }),
  * });

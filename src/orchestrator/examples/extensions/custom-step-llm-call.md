@@ -1,6 +1,6 @@
 # Example: Step That Wraps an LLM Call
 
-`GuidlioLMService` errors are typed — `LLMTransientError` for recoverable
+`LMService` errors are typed — `LLMTransientError` for recoverable
 failures, `LLMPermanentError` / `LLMParseError` / `LLMSchemaError` for ones that
 won't resolve on a retry. A step that calls the LLM must translate those typed
 errors into `StepOutcome` semantics so the orchestrator's retry policy can act on
@@ -11,7 +11,7 @@ parse failures.
 
 **Concepts covered:**
 
-- Accepting `GuidlioLMService` as a constructor dependency
+- Accepting `LMService` as a constructor dependency
 - Passing `meta.signal` to `callJSON()` for cooperative cancellation
 - Translating `LLMTransientError` → `failed({ retryable: true })`
 - Translating `LLMPermanentError`, `LLMSchemaError`, `LLMParseError` → `failed({ retryable: false })`
@@ -23,7 +23,7 @@ parse failures.
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 import { z } from "zod";
 
 export const ClassificationSchema = z.object({
@@ -52,20 +52,20 @@ import {
   StepRunMeta,
   ok,
   failed,
-  GuidlioLMService,
+  LMService,
   LLMTransientError,
   LLMPermanentError,
   LLMSchemaError,
   LLMParseError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 import { ClassifyContext, ClassificationSchema } from "./context";
 
 class ClassifyStep extends PipelineStep<ClassifyContext> {
   readonly name = "classify";
 
-  private readonly llm: GuidlioLMService;
+  private readonly llm: LMService;
 
-  constructor(llm: GuidlioLMService) {
+  constructor(llm: LMService) {
     super();
     this.llm = llm;
   }
@@ -118,9 +118,9 @@ class ClassifyStep extends PipelineStep<ClassifyContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, LMService, RetryPolicy } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     // ... provider config
   ],
@@ -134,7 +134,7 @@ class StoreResultStep extends PipelineStep<ClassifyContext> {
   }
 }
 
-const orchestrator = new GuidlioOrchestrator<ClassifyContext>({
+const orchestrator = new PipelineOrchestrator<ClassifyContext>({
   steps: [
     new ClassifyStep(llm), // inject the shared LLM service
     new StoreResultStep(),

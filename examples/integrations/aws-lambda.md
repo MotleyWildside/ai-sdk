@@ -1,6 +1,6 @@
 # AWS Lambda Integration
 
-Running `@guidlio/ai-sdk` in AWS Lambda: initializing the service outside the handler for warm-start reuse, externalizing the cache to Redis/ElastiCache so it survives cold starts, and deriving an `AbortSignal` from `context.getRemainingTimeInMillis()`.
+Running `@motleywildside/ai-sdk` in AWS Lambda: initializing the service outside the handler for warm-start reuse, externalizing the cache to Redis/ElastiCache so it survives cold starts, and deriving an `AbortSignal` from `context.getRemainingTimeInMillis()`.
 
 **Concepts covered:**
 
@@ -17,7 +17,7 @@ Lambda freezes the execution environment between invocations and thaws it for th
 
 ```typescript
 // src/llm.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, CacheProvider } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry, CacheProvider } from "@motleywildside/ai-sdk";
 import Redis from "ioredis";
 
 // ── Redis-backed cache ─────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ registry.register({
 });
 
 // ── Service singleton ──────────────────────────────────────────────────────
-export const llm = new GuidlioLMService({
+export const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
   cacheProvider: redisCache,
@@ -88,7 +88,7 @@ export const llm = new GuidlioLMService({
 // src/handler.ts
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { llm } from "./llm";
-import { LLMTransientError } from "@guidlio/ai-sdk";
+import { LLMTransientError } from "@motleywildside/ai-sdk";
 
 export const handler: APIGatewayProxyHandlerV2 = async (event, context) => {
   const body = JSON.parse(event.body ?? "{}") as { text?: string };

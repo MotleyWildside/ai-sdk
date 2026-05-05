@@ -3,7 +3,7 @@
  */
 
 // Core Service & Providers
-export { GuidlioLMService } from "./llm-service";
+export { LMService } from "./llm-service";
 export { OpenAIProvider } from "./llm-service";
 export { OpenRouterProvider } from "./llm-service";
 export { GeminiProvider } from "./llm-service";
@@ -14,7 +14,7 @@ export { InMemoryCacheProvider } from "./llm-service";
 
 // Pipeline Framework (Orchestrator)
 export {
-	GuidlioOrchestrator,
+	PipelineOrchestrator,
 	BasePipelineStep,
 	DefaultPolicy,
 	LoggerPipelineObserver,
@@ -32,7 +32,7 @@ export {
 export type {
 	PipelineStep,
 	PipelineRunResult,
-	GuidlioOrchestratorConfig,
+	PipelineOrchestratorConfig,
 	PipelineRunOptions,
 	BaseContext,
 	StepResult,
@@ -52,7 +52,7 @@ export type {
 	LLMEmbedResult,
 	LLMEmbedBatchParams,
 	LLMEmbedBatchResult,
-	GuidlioLMServiceConfig,
+	LMServiceConfig,
 } from "./llm-service/types";
 
 export type { CacheConfig } from "./llm-service/cache/types";

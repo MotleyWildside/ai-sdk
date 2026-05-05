@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockLogger } from "../fixtures/mockLogger";
 import { makePrompt } from "../fixtures/prompts";
 
-function makeService(overrides: Parameters<typeof GuidlioLMService["prototype"]["constructor"]>[0] = { providers: [makeMockProvider()] }) {
-	return new GuidlioLMService(overrides);
+function makeService(overrides: Parameters<typeof LMService["prototype"]["constructor"]>[0] = { providers: [makeMockProvider()] }) {
+	return new LMService(overrides);
 }
 
-describe("GuidlioLMService — Constructor", () => {
+describe("LMService — Constructor", () => {
 	it("C-01: throws when providers array is empty", () => {
-		expect(() => new GuidlioLMService({ providers: [] })).toThrow(
+		expect(() => new LMService({ providers: [] })).toThrow(
 			"At least one provider",
 		);
 	});
@@ -20,14 +20,14 @@ describe("GuidlioLMService — Constructor", () => {
 		const p1 = makeMockProvider({ name: "dup" });
 		const p2 = makeMockProvider({ name: "dup" });
 		// Should not throw; second registration silently wins
-		expect(() => new GuidlioLMService({ providers: [p1, p2] })).not.toThrow();
+		expect(() => new LMService({ providers: [p1, p2] })).not.toThrow();
 	});
 
 	it("C-03: no cacheProvider defaults to InMemoryCacheProvider (service still works)", async () => {
 		const provider = makeMockProvider();
 		const reg = new PromptRegistry();
 		reg.register(makePrompt({ promptId: "p1", version: "1" }));
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg });
 		// Exercises the default cache path without throwing
 		const result = await svc.callText({ promptId: "p1" });
 		expect(result.text).toBe("mock response");
@@ -35,7 +35,7 @@ describe("GuidlioLMService — Constructor", () => {
 
 	it("C-04: no promptRegistry defaults to fresh registry; prompts registered on it are usable", async () => {
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider] });
+		const svc = new LMService({ providers: [provider] });
 		svc.promptRegistry.register(makePrompt({ promptId: "p-fresh", version: "1" }));
 		const result = await svc.callText({ promptId: "p-fresh" });
 		expect(result.text).toBe("mock response");
@@ -45,33 +45,33 @@ describe("GuidlioLMService — Constructor", () => {
 		const provider = makeMockProvider();
 		const reg = new PromptRegistry();
 		reg.register(makePrompt({ promptId: "p1", version: "1" }));
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg });
 		await expect(svc.callText({ promptId: "p1" })).resolves.toBeDefined();
 	});
 
 	it("C-06: defaultProvider referencing unregistered name still constructs (fallback at call-time)", () => {
 		const gemini = makeMockProvider({ name: "gemini" });
 		expect(
-			() => new GuidlioLMService({ providers: [gemini], defaultProvider: "openai" }),
+			() => new LMService({ providers: [gemini], defaultProvider: "openai" }),
 		).not.toThrow();
 	});
 
 	it("C-07: full config round-trips (promptRegistry getter returns the one supplied)", () => {
 		const reg = new PromptRegistry();
-		const svc = new GuidlioLMService({ providers: [makeMockProvider()], promptRegistry: reg });
+		const svc = new LMService({ providers: [makeMockProvider()], promptRegistry: reg });
 		expect(svc.promptRegistry).toBe(reg);
 	});
 });
 
-describe("GuidlioLMService — callText happy path", () => {
+describe("LMService — callText happy path", () => {
 	let provider: ReturnType<typeof makeMockProvider>;
 	let reg: PromptRegistry;
-	let svc: GuidlioLMService;
+	let svc: LMService;
 
 	beforeEach(() => {
 		provider = makeMockProvider();
 		reg = new PromptRegistry();
-		svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg });
+		svc = new LMService({ providers: [provider], promptRegistry: reg });
 	});
 
 	it("T-01: calls provider with built messages; result.text matches provider response", async () => {
@@ -113,7 +113,7 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-06: params.model overrides prompt.modelDefaults.model and config.defaultModel", async () => {
 		reg.register(makePrompt({ promptId: "p6", version: "1", modelDefaults: { model: "prompt-model" } }));
-		const svcWithDefault = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
 		await svcWithDefault.callText({ promptId: "p6", model: "params-model" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("params-model");
@@ -121,7 +121,7 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-07: prompt.modelDefaults.model used when params.model absent", async () => {
 		reg.register(makePrompt({ promptId: "p7", version: "1", modelDefaults: { model: "prompt-model" } }));
-		const svcWithDefault = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
 		await svcWithDefault.callText({ promptId: "p7" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("prompt-model");
@@ -129,7 +129,7 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-08: config.defaultModel used when neither params nor prompt specify a model", async () => {
 		reg.register(makePrompt({ promptId: "p8", version: "1", modelDefaults: { model: "" } }));
-		const svcWithDefault = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
 		await svcWithDefault.callText({ promptId: "p8" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("config-model");
@@ -137,13 +137,13 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-09: throws when no model can be resolved", async () => {
 		reg.register(makePrompt({ promptId: "p9", version: "1", modelDefaults: { model: "" } }));
-		const svcNoModel = new GuidlioLMService({ providers: [provider], promptRegistry: reg });
+		const svcNoModel = new LMService({ providers: [provider], promptRegistry: reg });
 		await expect(svcNoModel.callText({ promptId: "p9" })).rejects.toThrow(/No model resolved/);
 	});
 
 	it("T-10a: params.temperature takes precedence over all", async () => {
 		reg.register(makePrompt({ promptId: "t10a", version: "1", modelDefaults: { model: "m", temperature: 0.5 } }));
-		const s = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
 		await s.callText({ promptId: "t10a", temperature: 0.9 });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.9);
@@ -151,7 +151,7 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-10b: prompt.modelDefaults.temperature used when params absent", async () => {
 		reg.register(makePrompt({ promptId: "t10b", version: "1", modelDefaults: { model: "m", temperature: 0.5 } }));
-		const s = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
 		await s.callText({ promptId: "t10b" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.5);
@@ -159,7 +159,7 @@ describe("GuidlioLMService — callText happy path", () => {
 
 	it("T-10c: config.defaultTemperature used when prompt has no temperature", async () => {
 		reg.register(makePrompt({ promptId: "t10c", version: "1", modelDefaults: { model: "m" } }));
-		const s = new GuidlioLMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
 		await s.callText({ promptId: "t10c" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.3);
@@ -233,7 +233,7 @@ describe("GuidlioLMService — callText happy path", () => {
 		const p = makeMockProvider();
 		const r = new PromptRegistry();
 		r.register(makePrompt({ promptId: "t19", version: "1" }));
-		const s = new GuidlioLMService({ providers: [p], promptRegistry: r, logger: log });
+		const s = new LMService({ providers: [p], promptRegistry: r, logger: log });
 		await s.callText({ promptId: "t19" });
 		expect(log.llmCall).toHaveBeenCalledOnce();
 		const entry = log.llmCall.mock.calls[0][0];

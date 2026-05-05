@@ -1,10 +1,10 @@
 # Multi-Provider Fallback
 
-When your primary LLM provider is degraded, you want to automatically retry on a different provider rather than returning an error to the user. `GuidlioLMService` handles transient retries within a single provider, but switching providers is a routing decision that belongs at the orchestrator layer. This recipe shows how to wire a primary OpenAI call with an automatic Gemini fallback using a custom `DefaultPolicy` subclass.
+When your primary LLM provider is degraded, you want to automatically retry on a different provider rather than returning an error to the user. `LMService` handles transient retries within a single provider, but switching providers is a routing decision that belongs at the orchestrator layer. This recipe shows how to wire a primary OpenAI call with an automatic Gemini fallback using a custom `DefaultPolicy` subclass.
 
 **Concepts covered:**
 
-- Both providers registered on the same `GuidlioLMService` instance with per-step model selection
+- Both providers registered on the same `LMService` instance with per-step model selection
 - `failed({ retryable: false })` from a step to prevent service-level retry and hand control to the orchestrator
 - `DefaultPolicy` subclass that routes `failed` outcomes to a fallback step
 - Why `defaultProvider` must not be set when using per-step model routing
@@ -15,7 +15,7 @@ When your primary LLM provider is degraded, you want to automatically retry on a
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface FallbackContext extends BaseContext {
   promptId: string;
@@ -33,12 +33,12 @@ Both providers are registered on a single service. The service picks the provide
 
 ```typescript
 import {
-  GuidlioLMService,
+  LMService,
   OpenAIProvider,
   GeminiProvider,
   PromptRegistry,
   ConsoleLogger,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -52,7 +52,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     new OpenAIProvider(process.env.OPENAI_API_KEY!),
     new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -71,12 +71,12 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, LLMTransientError } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, LLMTransientError } from "@motleywildside/ai-sdk";
 
 class PrimaryCallStep extends PipelineStep<FallbackContext> {
   readonly name = "primary-call";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -116,7 +116,7 @@ class PrimaryCallStep extends PipelineStep<FallbackContext> {
 class FallbackCallStep extends PipelineStep<FallbackContext> {
   readonly name = "fallback-call";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -153,7 +153,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   StepOutcomeFailed,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class FallbackPolicy extends DefaultPolicy<FallbackContext> {
   protected override fail(
@@ -175,9 +175,9 @@ class FallbackPolicy extends DefaultPolicy<FallbackContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<FallbackContext>({
+const orchestrator = new PipelineOrchestrator<FallbackContext>({
   steps: [new PrimaryCallStep(llm), new FallbackCallStep(llm)],
   policy: () => new FallbackPolicy(),
   maxTransitions: 10,
@@ -210,7 +210,7 @@ if (result.status === "ok") {
 
 ## Why this belongs at the orchestrator layer
 
-`GuidlioLMService` retry is designed to handle transient failures on a single provider: the same request goes to the same provider with the same credentials up to `maxAttempts` times. Switching providers is a different concern — it may require different models, different API keys, and different response characteristics. The orchestrator's policy layer is the right place for that routing decision because it can inspect the outcome, check context, and make a dynamic goto.
+`LMService` retry is designed to handle transient failures on a single provider: the same request goes to the same provider with the same credentials up to `maxAttempts` times. Switching providers is a different concern — it may require different models, different API keys, and different response characteristics. The orchestrator's policy layer is the right place for that routing decision because it can inspect the outcome, check context, and make a dynamic goto.
 
 ---
 

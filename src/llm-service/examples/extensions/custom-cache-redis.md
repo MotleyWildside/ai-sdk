@@ -9,11 +9,11 @@ The built-in `InMemoryCacheProvider` is lost on process restart and is not share
 - Deserialising values with `JSON.parse` on `get`
 - Wrapping every method in try/catch so Redis failures degrade gracefully
 - Key namespacing with a configurable prefix to isolate environments
-- Wiring the provider into `GuidlioLMServiceConfig.cacheProvider`
+- Wiring the provider into `LMServiceConfig.cacheProvider`
 
 ## Installation
 
-`ioredis` is a peer dependency — install it alongside `@guidlio/ai-sdk`:
+`ioredis` is a peer dependency — install it alongside `@motleywildside/ai-sdk`:
 
 ```bash
 npm install ioredis
@@ -23,7 +23,7 @@ npm install ioredis
 
 ```typescript
 import Redis from "ioredis";
-import type { CacheProvider, LLMLogger } from "@guidlio/ai-sdk";
+import type { CacheProvider, LLMLogger } from "@motleywildside/ai-sdk";
 
 interface RedisCacheProviderOptions {
   // All cache keys are prefixed with this string.
@@ -120,11 +120,11 @@ export class RedisCacheProvider implements CacheProvider {
 }
 ```
 
-## Wiring into GuidlioLMService
+## Wiring into LMService
 
 ```typescript
 import Redis from "ioredis";
-import { GuidlioLMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry, ConsoleLogger } from "@motleywildside/ai-sdk";
 import { RedisCacheProvider } from "./RedisCacheProvider";
 
 const redis = new Redis(process.env.REDIS_URL!);
@@ -145,7 +145,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   cacheProvider,
   logger,

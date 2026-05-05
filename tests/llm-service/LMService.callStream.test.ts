@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { LLMTransientError } from "../../src/llm-service/errors";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockLogger } from "../fixtures/mockLogger";
 import { makePrompt } from "../fixtures/prompts";
 
-describe("GuidlioLMService — callStream", () => {
+describe("LMService — callStream", () => {
 	let reg: PromptRegistry;
 
 	beforeEach(() => {
@@ -22,7 +22,7 @@ describe("GuidlioLMService — callStream", () => {
 				})(),
 			}),
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, logger: log });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, logger: log });
 		return { svc, provider, log };
 	}
 
@@ -59,7 +59,7 @@ describe("GuidlioLMService — callStream", () => {
 				throw new LLMTransientError({ message: "timeout", provider: "mock", model: "mock-model" });
 			},
 		});
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3 });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, maxAttempts: 3 });
 		await expect(svc.callStream({ promptId: "p1" })).rejects.toBeInstanceOf(LLMTransientError);
 		// callStream is invoked only once — no retry
 		expect(provider.callStream).toHaveBeenCalledOnce();

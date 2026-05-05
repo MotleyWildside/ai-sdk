@@ -1,13 +1,13 @@
 # Next.js App Router Route Handler
 
-Wiring `@guidlio/ai-sdk` into a Next.js 13+ App Router route handler, including streaming responses via `ReadableStream` and correct singleton initialization.
+Wiring `@motleywildside/ai-sdk` into a Next.js 13+ App Router route handler, including streaming responses via `ReadableStream` and correct singleton initialization.
 
 **Concepts covered:**
 
 - Singleton service initialized outside the handler for warm-instance reuse
 - Streaming response with `TransformStream` and `ReadableStream`
 - `request.signal` for client-disconnect cancellation (Next.js 13.2+)
-- `@guidlio/ai-sdk` cache vs. Next.js `fetch` cache — they are independent
+- `@motleywildside/ai-sdk` cache vs. Next.js `fetch` cache — they are independent
 
 ---
 
@@ -17,7 +17,7 @@ Initialize outside the handler so the instance (and its in-memory cache) survive
 
 ```typescript
 // lib/llm.ts
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -38,7 +38,7 @@ registry.register({
   output: { type: "text" },
 });
 
-export const llm = new GuidlioLMService({
+export const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -52,7 +52,7 @@ export const llm = new GuidlioLMService({
 // app/api/summarize/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { llm } from "@/lib/llm";
-import { LLMTransientError } from "@guidlio/ai-sdk";
+import { LLMTransientError } from "@motleywildside/ai-sdk";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = (await request.json()) as { text?: string };
@@ -136,11 +136,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 
 ## Cache interaction
 
-`@guidlio/ai-sdk`'s cache and Next.js's built-in `fetch` cache are completely independent layers:
+`@motleywildside/ai-sdk`'s cache and Next.js's built-in `fetch` cache are completely independent layers:
 
 | Layer                                | Controlled by                                     |
 | :----------------------------------- | :------------------------------------------------ |
-| `@guidlio/ai-sdk` `InMemoryCacheProvider` | `cache: { mode, ttlSeconds }` on each call        |
+| `@motleywildside/ai-sdk` `InMemoryCacheProvider` | `cache: { mode, ttlSeconds }` on each call        |
 | Next.js `fetch` cache / `revalidate` | `export const revalidate = ...` in route segments |
 
 Do not set `revalidate` on a route handler whose freshness is controlled by the LLM cache — the two caches will fight. Either use one or the other, or use `export const dynamic = "force-dynamic"` to opt the route out of Next.js caching entirely.

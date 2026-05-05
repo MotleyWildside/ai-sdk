@@ -19,7 +19,7 @@ propagate immediately.
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface ApiContext extends BaseContext {
   requestPayload: Record<string, unknown>;
@@ -33,7 +33,7 @@ interface ApiContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@motleywildside/ai-sdk";
 
 class CallExternalApiStep extends PipelineStep<ApiContext> {
   readonly name = "call-external-api";
@@ -81,9 +81,9 @@ class ParseResponseStep extends PipelineStep<ApiContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RetryPolicy } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<ApiContext>({
+const orchestrator = new PipelineOrchestrator<ApiContext>({
   steps: [new CallExternalApiStep(), new ParseResponseStep()],
 
   // RetryPolicy options — all optional, shown here with their defaults:
@@ -154,13 +154,13 @@ starts with attempt counts left over from the first.
 ```typescript
 // BUG — the attempt counter leaks between concurrent or sequential runs
 const policy = new RetryPolicy({ maxAttempts: 3 });
-const orchestrator = new GuidlioOrchestrator<ApiContext>({
+const orchestrator = new PipelineOrchestrator<ApiContext>({
   steps: [...],
   policy,            // instance shared by all runs ← wrong
 });
 
 // FIX — factory creates a fresh policy for each run()
-const orchestrator = new GuidlioOrchestrator<ApiContext>({
+const orchestrator = new PipelineOrchestrator<ApiContext>({
   steps: [...],
   policy: () => new RetryPolicy({ maxAttempts: 3 }),  // ← correct
 });

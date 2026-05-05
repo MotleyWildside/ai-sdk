@@ -1,6 +1,6 @@
 # Testing Consumer Code
 
-Testing code that uses `@guidlio/ai-sdk` without hitting real provider APIs. The approach is to inject a `MockLLMProvider` that returns scripted responses, combined with `InMemoryCacheProvider` for cache behavior tests and `enableCache: false` for tests that don't care about caching.
+Testing code that uses `@motleywildside/ai-sdk` without hitting real provider APIs. The approach is to inject a `MockLLMProvider` that returns scripted responses, combined with `InMemoryCacheProvider` for cache behavior tests and `enableCache: false` for tests that don't care about caching.
 
 **Concepts covered:**
 
@@ -17,7 +17,7 @@ Testing code that uses `@guidlio/ai-sdk` without hitting real provider APIs. The
 Put this in a shared test helper file (e.g., `tests/helpers/MockLLMProvider.ts`):
 
 ```typescript
-import { LLMProvider, LLMTransientError, ProviderRequest } from "@guidlio/ai-sdk";
+import { LLMProvider, LLMTransientError, ProviderRequest } from "@motleywildside/ai-sdk";
 
 type MockResponse = {
   text?: string;
@@ -107,14 +107,14 @@ export class MockLLMProvider implements LLMProvider {
 
 ## The service under test
 
-A simple `SummarizeService` that wraps `GuidlioLMService`:
+A simple `SummarizeService` that wraps `LMService`:
 
 ```typescript
 // src/SummarizeService.ts
-import { GuidlioLMService, LLMTextResult } from "@guidlio/ai-sdk";
+import { LMService, LLMTextResult } from "@motleywildside/ai-sdk";
 
 export class SummarizeService {
-  constructor(private llm: GuidlioLMService) {}
+  constructor(private llm: LMService) {}
 
   async summarize(text: string, traceId: string): Promise<string> {
     const result = await this.llm.callText({
@@ -133,7 +133,7 @@ export class SummarizeService {
 
 ```typescript
 import { describe, it, expect, beforeEach } from "vitest";
-import { GuidlioLMService, PromptRegistry, InMemoryCacheProvider } from "@guidlio/ai-sdk";
+import { LMService, PromptRegistry, InMemoryCacheProvider } from "@motleywildside/ai-sdk";
 import { MockLLMProvider } from "./helpers/MockLLMProvider";
 import { SummarizeService } from "../src/SummarizeService";
 
@@ -156,7 +156,7 @@ describe("SummarizeService", () => {
 
   beforeEach(() => {
     mock = new MockLLMProvider();
-    const llm = new GuidlioLMService({
+    const llm = new LMService({
       providers: [mock],
       promptRegistry: makeRegistry(),
       enableCache: false, // isolate from cache in non-cache tests
@@ -187,7 +187,7 @@ describe("SummarizeService", () => {
     mock.simulateTransientError(1);
     mock.queue([{ text: "Recovered summary." }]);
 
-    const llm = new GuidlioLMService({
+    const llm = new LMService({
       providers: [mock],
       promptRegistry: makeRegistry(),
       maxAttempts: 2, // allow 1 retry
@@ -207,7 +207,7 @@ describe("SummarizeService", () => {
     mock.queue([{ text: "Cached summary." }]);
 
     const cache = new InMemoryCacheProvider();
-    const llm = new GuidlioLMService({
+    const llm = new LMService({
       providers: [mock],
       promptRegistry: makeRegistry(),
       cacheProvider: cache,

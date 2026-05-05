@@ -22,7 +22,7 @@ is called first and only the `fail` transition is intercepted.
 ## Policy
 
 ```typescript
-import { RetryPolicy, PolicyDecisionInput, BaseContext, StepOutcome, Transition } from "@guidlio/ai-sdk";
+import { RetryPolicy, PolicyDecisionInput, BaseContext, StepOutcome, Transition } from "@motleywildside/ai-sdk";
 
 type StepOutcomeFailed = Extract<StepOutcome, { type: "failed" }>;
 
@@ -69,7 +69,7 @@ and the second run starts with fewer retries than expected.
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface SummaryContext extends BaseContext {
   documentId: string;
@@ -84,7 +84,7 @@ interface SummaryContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@motleywildside/ai-sdk";
 
 class PrimaryCallStep extends PipelineStep<SummaryContext> {
   readonly name = "primary-call";
@@ -138,9 +138,9 @@ class FinalizeStep extends PipelineStep<SummaryContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<SummaryContext>({
+const orchestrator = new PipelineOrchestrator<SummaryContext>({
   steps: [new PrimaryCallStep(), new FallbackCallStep(), new FinalizeStep()],
   // Factory required: RetryThenFallbackPolicy inherits RetryPolicy's mutable
   // attempt counters, so a new instance per run prevents cross-run leakage.

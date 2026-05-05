@@ -19,7 +19,7 @@ The policy is the "brain" of the pipeline. It looks at the outcome of the curren
 
 - **Transition**: Describes _where_ to go next (e.g., `next`, `goto`, `retry`, `stop`, `fail`, `degrade`).
 
-### 3. GuidlioOrchestrator
+### 3. PipelineOrchestrator
 
 The engine that runs the loop. It manages the context, executes steps, consults the policy for transitions, and handles observability.
 
@@ -83,9 +83,9 @@ class ValidateInputStep extends PipelineStep<MyContext> {
 Assemble steps and optionally a custom policy or observer.
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver } from "./orchestrator";
+import { PipelineOrchestrator, LoggerPipelineObserver } from "./orchestrator";
 
-const orchestrator = new GuidlioOrchestrator<MyContext>({
+const orchestrator = new PipelineOrchestrator<MyContext>({
   steps: [new ValidateInputStep(), new FetchDataStep(), new ProcessDataStep()],
   observer: new LoggerPipelineObserver(),
   maxTransitions: 20, // guard against infinite loops
@@ -164,7 +164,7 @@ class RetryPolicy extends DefaultPolicy<MyContext> {
 > **Concurrent runs**: pass a factory to `policy` so each run gets its own policy instance:
 >
 > ```typescript
-> new GuidlioOrchestrator({ policy: () => new RetryPolicy(), steps: [...] });
+> new PipelineOrchestrator({ policy: () => new RetryPolicy(), steps: [...] });
 > ```
 >
 > Passing an instance directly is safe for sequential runs only.

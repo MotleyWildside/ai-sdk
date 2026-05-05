@@ -1,4 +1,4 @@
-# @guidlio/ai-sdk Examples
+# @motleywildside/ai-sdk Examples
 
 A curated example library organized by what you're trying to do. Every example is a self-contained `.md` file with copy-paste-ready TypeScript.
 

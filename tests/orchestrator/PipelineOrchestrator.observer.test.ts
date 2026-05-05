@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed } from "../../src/orchestrator/statusHelpers";
 import { NoopPipelineObserver } from "../../src/orchestrator/observers/NoopPipelineObserver";
@@ -25,14 +25,14 @@ class ThrowingObserver extends NoopPipelineObserver {
 	}
 }
 
-describe("GuidlioOrchestrator — Observer", () => {
+describe("PipelineOrchestrator — Observer", () => {
 	it("OB-02: NoopPipelineObserver used by default — run completes", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new OkStep("s")] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new OkStep("s")] });
 		await expect(orch.run({ traceId: "t" })).resolves.toBeDefined();
 	});
 
 	it("OB-03: observer throws in onStepStart — becomes failed result (caught by run's try/catch)", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new OkStep("s")],
 			observer: new ThrowingObserver(),
 		});
@@ -46,20 +46,20 @@ describe("GuidlioOrchestrator — Observer", () => {
 		const obs = makeMockObserver();
 		// Make onTransition undefined to simulate optional
 		(obs as { onTransition?: unknown }).onTransition = undefined;
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new OkStep("s")], observer: obs });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new OkStep("s")], observer: obs });
 		await expect(orch.run({ traceId: "t" })).resolves.toBeDefined();
 	});
 
 	it("OB-05: onError fires exactly once on failed run", async () => {
 		const obs = makeMockObserver();
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new FailStep()], observer: obs });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new FailStep()], observer: obs });
 		await orch.run({ traceId: "t" });
 		expect(obs.onError).toHaveBeenCalledOnce();
 	});
 
 	it("OB-06: onStepFinish durationMs is non-negative", async () => {
 		const obs = makeMockObserver();
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new OkStep("s")], observer: obs });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new OkStep("s")], observer: obs });
 		await orch.run({ traceId: "t" });
 		const [args] = obs.onStepFinish.mock.calls[0];
 		expect(typeof args.durationMs).toBe("number");

@@ -3,7 +3,7 @@
 ## Minimal setup
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -16,7 +16,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -48,7 +48,7 @@ const result = await llm.callText({
 
 ## Propagating trace IDs
 
-If you run GuidlioLMService inside a larger request pipeline, pass the existing trace ID so all log entries share the same correlation key.
+If you run LMService inside a larger request pipeline, pass the existing trace ID so all log entries share the same correlation key.
 
 ```typescript
 const result = await llm.callText({
@@ -64,7 +64,7 @@ const result = await llm.callText({
 When neither call params nor the prompt definition specify a model, the service uses `config.defaultModel`.
 
 ```typescript
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   defaultModel: "gpt-4o-mini",
   promptRegistry: registry,

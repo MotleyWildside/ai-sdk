@@ -5,7 +5,7 @@
 ## Anatomy of a PromptDefinition
 
 ```typescript
-import { PromptRegistry } from "@guidlio/ai-sdk";
+import { PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -93,7 +93,7 @@ registry.clear();
 
 ```typescript
 import { readFileSync } from "fs";
-import type { PromptDefinition } from "@guidlio/ai-sdk";
+import type { PromptDefinition } from "@motleywildside/ai-sdk";
 
 const definitions: PromptDefinition[] = JSON.parse(
   readFileSync("prompts.json", "utf-8"),
@@ -104,7 +104,7 @@ for (const def of definitions) {
   registry.register(def);
 }
 
-const llm = new GuidlioLMService({ providers: [...], promptRegistry: registry });
+const llm = new LMService({ providers: [...], promptRegistry: registry });
 ```
 
 > Note: `PromptDefinition.output.schema` must be a Zod schema instance — it cannot be serialized to JSON. Either register schema-less definitions from file and attach schemas in code, or omit `schema` and pass `jsonSchema` per-call.

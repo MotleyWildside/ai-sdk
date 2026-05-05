@@ -1,6 +1,6 @@
 # RAG Pipeline
 
-Retrieval-Augmented Generation combines the precision of document retrieval with the fluency of LLM generation. This recipe shows how to wire embed → retrieve → rerank → generate as a four-step orchestrator pipeline, using `GuidlioLMService` for every LLM operation and the orchestrator's `degrade` transition to handle zero-hit retrievals gracefully.
+Retrieval-Augmented Generation combines the precision of document retrieval with the fluency of LLM generation. This recipe shows how to wire embed → retrieve → rerank → generate as a four-step orchestrator pipeline, using `LMService` for every LLM operation and the orchestrator's `degrade` transition to handle zero-hit retrievals gracefully.
 
 **Concepts covered:**
 
@@ -18,7 +18,7 @@ Retrieval-Augmented Generation combines the precision of document retrieval with
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface Document {
   id: string;
@@ -84,12 +84,12 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 ```typescript
 import {
-  GuidlioLMService,
+  LMService,
   GeminiProvider,
   OpenAIProvider,
   PromptRegistry,
   ConsoleLogger,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -116,7 +116,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     new OpenAIProvider(process.env.OPENAI_API_KEY!),
     new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -131,13 +131,13 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@motleywildside/ai-sdk";
 import { z } from "zod";
 
 class EmbedQueryStep extends PipelineStep<RagContext> {
   readonly name = "embed-query";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -182,7 +182,7 @@ const RerankSchema = z.object({
 class RerankStep extends PipelineStep<RagContext> {
   readonly name = "rerank";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -220,7 +220,7 @@ class RerankStep extends PipelineStep<RagContext> {
 class GenerateStep extends PipelineStep<RagContext> {
   readonly name = "generate";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -249,7 +249,7 @@ class GenerateStep extends PipelineStep<RagContext> {
 The policy degrades instead of failing when retrieval returns zero candidates. This lets the caller decide whether a "no results" answer is acceptable rather than treating it as a pipeline error.
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "@guidlio/ai-sdk";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput } from "@motleywildside/ai-sdk";
 
 class RagPolicy extends DefaultPolicy<RagContext> {
   override ok(
@@ -278,9 +278,9 @@ class RagPolicy extends DefaultPolicy<RagContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, LoggerPipelineObserver } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, LoggerPipelineObserver } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<RagContext>({
+const orchestrator = new PipelineOrchestrator<RagContext>({
   steps: [new EmbedQueryStep(llm), new RetrieveStep(), new RerankStep(llm), new GenerateStep(llm)],
   policy: () => new RagPolicy(),
   observer: new LoggerPipelineObserver(new ConsoleLogger()),

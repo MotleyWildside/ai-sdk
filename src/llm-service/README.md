@@ -1,6 +1,6 @@
 # LLM Service Module
 
-The `GuidlioLMService` module is the core gateway for all Large Language Model interactions within the package. It provides a unified interface for text generation, JSON extraction, streaming, and embeddings, regardless of the underlying provider (OpenAI, Gemini, OpenRouter).
+The `LMService` module is the core gateway for all Large Language Model interactions within the package. It provides a unified interface for text generation, JSON extraction, streaming, and embeddings, regardless of the underlying provider (OpenAI, Gemini, OpenRouter).
 
 ## Key Features
 
@@ -14,7 +14,7 @@ The `GuidlioLMService` module is the core gateway for all Large Language Model i
 
 ## Core API
 
-### `GuidlioLMService`
+### `LMService`
 
 | Method                | Description                                                                                                                                 |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -26,7 +26,7 @@ The `GuidlioLMService` module is the core gateway for all Large Language Model i
 
 All methods accept `traceId?` and `signal?: AbortSignal`.
 
-### `GuidlioLMServiceConfig`
+### `LMServiceConfig`
 
 | Field                     | Default                 | Notes                                                                                                                   |
 | :------------------------ | :---------------------- | :---------------------------------------------------------------------------------------------------------------------- |
@@ -69,10 +69,10 @@ The `PromptRegistry` manages versioned prompt templates with `{variable}` interp
 
 ```typescript
 import { z } from "zod";
-import { GuidlioLMService } from "./GuidlioLMService";
+import { LMService } from "./LMService";
 import { OpenAIProvider } from "./providers/OpenAIProvider";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   defaultProvider: "openai",
   maxAttempts: 4,
@@ -117,7 +117,7 @@ The transient/permanent split is load-bearing for retry behavior. Preserve it wh
 
 ```
 llm-service/
-├── GuidlioLMService.ts               Orchestration: public API + shared executors
+├── LMService.ts               Orchestration: public API + shared executors
 ├── errors.ts                   Error hierarchy
 ├── types.ts                    Public param/result/config types
 ├── cache/                      CacheProvider interface + in-memory impl

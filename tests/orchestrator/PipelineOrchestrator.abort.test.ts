@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok } from "../../src/orchestrator/statusHelpers";
 import { PIPELINE_STATUS } from "../../src/orchestrator/constants";
@@ -25,14 +25,14 @@ class SlowStep extends PipelineStep<Ctx> {
 	}
 }
 
-describe("GuidlioOrchestrator — AbortSignal", () => {
+describe("PipelineOrchestrator — AbortSignal", () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
 	it("AB-01: pre-aborted signal — current behavior: still runs first step (locked)", async () => {
 		const controller = new AbortController();
 		controller.abort();
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new TrackStep("s1"), new TrackStep("s2")],
 		});
 		// The orchestrator checks abort BEFORE executing each step
@@ -69,7 +69,7 @@ describe("GuidlioOrchestrator — AbortSignal", () => {
 				return super.decide(input);
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new S1(), new S2()],
 			policy: () => new AbortAfterS1Policy(),
 		});
@@ -91,7 +91,7 @@ describe("GuidlioOrchestrator — AbortSignal", () => {
 			}
 		}
 		const controller = new AbortController();
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new TrackStep("s")],
 			policy: () => new RetryDelayPolicy(),
 		});

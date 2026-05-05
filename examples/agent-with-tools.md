@@ -16,7 +16,7 @@ A minimal ReAct-style agent that lets an LLM choose between tools, execute them,
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface AgentContext extends BaseContext {
   query: string;
@@ -61,7 +61,7 @@ function runSearch(args: Record<string, string | number>): string {
 ## Prompts and service setup
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 import { z } from "zod";
 
 const registry = new PromptRegistry();
@@ -97,7 +97,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -108,12 +108,12 @@ const llm = new GuidlioLMService({
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@motleywildside/ai-sdk";
 
 class SelectToolStep extends PipelineStep<AgentContext> {
   readonly name = "select-tool";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -197,7 +197,7 @@ class ObserveStep extends PipelineStep<AgentContext> {
 class AnswerStep extends PipelineStep<AgentContext> {
   readonly name = "answer";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -220,9 +220,9 @@ class AnswerStep extends PipelineStep<AgentContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, RedirectRoutingPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RedirectRoutingPolicy } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<AgentContext>({
+const orchestrator = new PipelineOrchestrator<AgentContext>({
   steps: [
     new SelectToolStep(llm),
     new RunCalculatorStep(),

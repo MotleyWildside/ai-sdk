@@ -1,6 +1,6 @@
 {
-	"name": "@guidlio/ai-sdk",
-	"version": "1.0.1",
+	"name": "@motleywildside/ai-sdk",
+	"version": "1.0.0",
 	"description": "TypeScript SDK for building AI apps with OpenAI, Gemini, OpenRouter, structured outputs, prompt management, caching and pipelines.",
 	"type": "module",
 	"main": "./dist/index.cjs",
@@ -52,12 +52,12 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MotleyWildside/guidlio-lm.git"
+		"url": "git+https://github.com/MotleyWildside/ai-sdk.git"
 	},
 	"bugs": {
-		"url": "https://github.com/MotleyWildside/guidlio-lm/issues"
+		"url": "https://github.com/MotleyWildside/ai-sdk/issues"
 	},
-	"homepage": "https://github.com/MotleyWildside/guidlio-lm#readme",
+	"homepage": "https://github.com/MotleyWildside/ai-sdk#readme",
 	"publishConfig": {
 		"access": "public"
 	},

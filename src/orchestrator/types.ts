@@ -109,7 +109,7 @@ export type PipelineRunResult<C extends BaseContext> =
 	| { status: "ok"; ctx: C; degraded?: { reason: string } }
 	| { status: "failed"; ctx: C; error: PipelineError };
 
-export type GuidlioOrchestratorConfig<C extends BaseContext> = {
+export type PipelineOrchestratorConfig<C extends BaseContext> = {
 	steps: PipelineStep<C>[];
 	observer?: PipelineObserver;
 	/**

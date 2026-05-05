@@ -15,11 +15,11 @@ The retry system protects against transient provider failures (rate limits, 5xx 
 ## Default behavior
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   // These are the defaults — shown explicitly for clarity:
   maxAttempts: 3, // 1 original attempt + up to 2 retries
@@ -50,7 +50,7 @@ Set `maxAttempts: 1` when another system already owns the retry logic and you wa
 
 ```typescript
 // Inside a pipeline orchestrator — the orchestrator's RetryPolicy handles retries
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   maxAttempts: 1, // no retries — let the orchestrator decide
   promptRegistry: registry,
@@ -59,7 +59,7 @@ const llm = new GuidlioLMService({
 
 Scenarios where `maxAttempts: 1` is the right choice:
 
-1. **Orchestrator-managed retries** — `GuidlioOrchestrator` with `RetryPolicy` already retries at the pipeline level; double-retrying inside the service adds unnecessary delay.
+1. **Orchestrator-managed retries** — `PipelineOrchestrator` with `RetryPolicy` already retries at the pipeline level; double-retrying inside the service adds unnecessary delay.
 2. **Idempotent batch jobs** — the job scheduler retries the whole item on failure; internal retries could cause duplicate side effects if the call partially succeeded.
 3. **Streaming calls** — `callStream` already bypasses retries entirely regardless of `maxAttempts`. Reconnection on stream errors is the caller's responsibility.
 
@@ -70,7 +70,7 @@ Scenarios where `maxAttempts: 1` is the right choice:
 Long-running batch jobs can tolerate higher total latency in exchange for fewer permanent failures. Wide backoff windows also help absorb provider rate-limit windows (typically 1-minute resets).
 
 ```typescript
-const batchLlm = new GuidlioLMService({
+const batchLlm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   maxAttempts: 10, // 1 original + 9 retries before giving up
   retryBaseDelayMs: 200, // start with a short delay — escalates quickly
@@ -103,7 +103,7 @@ for (const item of batchItems) {
 Users notice latency. A single retry with a short base delay keeps the perceived failure rate low without adding more than ~400 ms of retry overhead in the worst case.
 
 ```typescript
-const userFacingLlm = new GuidlioLMService({
+const userFacingLlm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   maxAttempts: 2, // 1 original + 1 retry
   retryBaseDelayMs: 200, // ~200–1200 ms before the single retry
@@ -128,7 +128,7 @@ Only `LLMTransientError` enters the retry loop. All other error types propagate 
 | `LLMSchemaError`    | No       | Parsed JSON did not match the Zod schema             |
 
 ```typescript
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@motleywildside/ai-sdk";
 
 try {
   const result = await llm.callText({ promptId: "summarize", variables: { text } });

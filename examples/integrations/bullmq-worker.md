@@ -1,6 +1,6 @@
 # BullMQ Worker Integration
 
-Using the `GuidlioOrchestrator` inside a BullMQ job worker: mapping job lifecycle to pipeline lifecycle, propagating `job.id` as traceId, reporting per-step progress, and handling cancellation.
+Using the `PipelineOrchestrator` inside a BullMQ job worker: mapping job lifecycle to pipeline lifecycle, propagating `job.id` as traceId, reporting per-step progress, and handling cancellation.
 
 **Concepts covered:**
 
@@ -17,8 +17,8 @@ Using the `GuidlioOrchestrator` inside a BullMQ job worker: mapping job lifecycl
 ```typescript
 // src/pipeline/summarizePipeline.ts
 import {
-  GuidlioOrchestrator,
-  GuidlioLMService,
+  PipelineOrchestrator,
+  LMService,
   PipelineStep,
   StepResult,
   StepRunMeta,
@@ -27,7 +27,7 @@ import {
   LoggerPipelineObserver,
   BaseContext,
   LLMTransientError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 interface SummarizeCtx extends BaseContext {
   rawText: string;
@@ -36,7 +36,7 @@ interface SummarizeCtx extends BaseContext {
 
 class SummarizeStep extends PipelineStep<SummarizeCtx> {
   readonly name = "summarize";
-  constructor(private llm: GuidlioLMService) {
+  constructor(private llm: LMService) {
     super();
   }
 
@@ -62,8 +62,8 @@ class SummarizeStep extends PipelineStep<SummarizeCtx> {
   }
 }
 
-export function createPipeline(llm: GuidlioLMService, observer: LoggerPipelineObserver) {
-  return new GuidlioOrchestrator<SummarizeCtx>({
+export function createPipeline(llm: LMService, observer: LoggerPipelineObserver) {
+  return new PipelineOrchestrator<SummarizeCtx>({
     steps: [new SummarizeStep(llm)],
     observer,
   });
@@ -77,7 +77,7 @@ export function createPipeline(llm: GuidlioLMService, observer: LoggerPipelineOb
 ```typescript
 // src/pipeline/progressObserver.ts
 import type { Job } from "bullmq";
-import { NoopPipelineObserver, PipelineObserver, StepOutcome } from "@guidlio/ai-sdk";
+import { NoopPipelineObserver, PipelineObserver, StepOutcome } from "@motleywildside/ai-sdk";
 
 export class BullMQProgressObserver extends NoopPipelineObserver implements PipelineObserver {
   private stepIndex = 0;
@@ -109,12 +109,12 @@ export class BullMQProgressObserver extends NoopPipelineObserver implements Pipe
 import { Worker } from "bullmq";
 import Redis from "ioredis";
 import {
-  GuidlioLMService,
+  LMService,
   OpenAIProvider,
   PromptRegistry,
   LoggerPipelineObserver,
   PipelineAbortedError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 import { createPipeline } from "./pipeline/summarizePipeline";
 import { BullMQProgressObserver } from "./pipeline/progressObserver";
 
@@ -131,7 +131,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });

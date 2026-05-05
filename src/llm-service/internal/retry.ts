@@ -1,6 +1,6 @@
 import { LLMTransientError } from "../errors";
 import type { LLMLogger } from "../../logger/types";
-import type { GuidlioLMServiceConfig } from "../types";
+import type { LMServiceConfig } from "../types";
 
 export const DEFAULT_MAX_ATTEMPTS = 3;
 export const DEFAULT_RETRY_BASE_DELAY_MS = 1000;
@@ -24,7 +24,7 @@ export interface RetryLogContext {
  */
 export async function callWithRetries<T>(
 	fn: () => Promise<T>,
-	config: GuidlioLMServiceConfig,
+	config: LMServiceConfig,
 	logger: LLMLogger | null,
 	ctx: RetryLogContext,
 ): Promise<T> {

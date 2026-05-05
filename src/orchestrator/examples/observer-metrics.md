@@ -16,7 +16,7 @@ A `PipelineObserver` receives lifecycle hooks for every step start, step finish,
 ## The PipelineObserver interface
 
 ```typescript
-import { PipelineObserver, NoopPipelineObserver, StepOutcome, PipelineRunResult } from "@guidlio/ai-sdk";
+import { PipelineObserver, NoopPipelineObserver, StepOutcome, PipelineRunResult } from "@motleywildside/ai-sdk";
 ```
 
 `NoopPipelineObserver` provides empty implementations of every hook so you only override the ones you need.
@@ -43,7 +43,7 @@ declare const pipelineRunTotal: Counter; // pipeline_run_total
 declare const pipelineRunDurationMs: Histogram; // pipeline_run_duration_ms
 declare const pipelineErrorsTotal: Counter; // pipeline_errors_total
 
-import { NoopPipelineObserver, PipelineObserver, BaseContext, PipelineRunResult } from "@guidlio/ai-sdk";
+import { NoopPipelineObserver, PipelineObserver, BaseContext, PipelineRunResult } from "@motleywildside/ai-sdk";
 
 class MetricsObserver<C extends BaseContext>
   extends NoopPipelineObserver
@@ -108,8 +108,8 @@ class MetricsObserver<C extends BaseContext>
 ## Wiring the observer
 
 ```typescript
-import { GuidlioOrchestrator, RetryPolicy } from "@guidlio/ai-sdk";
-import { BaseContext } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, RetryPolicy } from "@motleywildside/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface WorkerContext extends BaseContext {
   jobId: string;
@@ -121,7 +121,7 @@ interface WorkerContext extends BaseContext {
 // stepStartTimes Map would mix entries from different pipelines.
 const metricsObserver = new MetricsObserver<WorkerContext>();
 
-const orchestrator = new GuidlioOrchestrator<WorkerContext>({
+const orchestrator = new PipelineOrchestrator<WorkerContext>({
   steps: [
     /* ...your steps... */
   ],

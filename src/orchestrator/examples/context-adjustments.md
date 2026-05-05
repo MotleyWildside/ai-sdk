@@ -33,7 +33,7 @@ The `patch` mode is a shallow merge: top-level fields in `patch` overwrite the c
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface PlanningContext extends BaseContext {
   goal: string;
@@ -49,7 +49,7 @@ interface PlanningContext extends BaseContext {
 ## Steps
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed, redirect } from "@motleywildside/ai-sdk";
 
 class PlanStep extends PipelineStep<PlanningContext> {
   readonly name = "plan";
@@ -95,7 +95,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   ContextAdjustment,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class PlanningPolicy extends DefaultPolicy<PlanningContext> {
   private readonly maxPlanningAttempts = 3;
@@ -149,9 +149,9 @@ class PlanningPolicy extends DefaultPolicy<PlanningContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<PlanningContext>({
+const orchestrator = new PipelineOrchestrator<PlanningContext>({
   steps: [new PlanStep(), new ValidatePlanStep(), new ExecuteStep()],
   policy: () => new PlanningPolicy(),
   // Each plan+validate cycle counts as 2 transitions; 3 attempts = up to 9 transitions

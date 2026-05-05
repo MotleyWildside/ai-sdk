@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { GuidlioLMService } from "../../src/llm-service/GuidlioLMService";
+import { LMService } from "../../src/llm-service/LMService";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockCache } from "../fixtures/mockCache";
@@ -12,13 +12,13 @@ function makeSetup(cacheOverrides: Parameters<typeof makeMockCache>[0] = {}) {
 	const cache = makeMockCache(cacheOverrides);
 	const provider = makeMockProvider();
 	const log = makeMockLogger();
-	const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache, logger: log });
+	const svc = new LMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache, logger: log });
 	return { reg, cache, provider, log, svc };
 }
 
 const CACHED_RESULT = { text: "cached", usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }, traceId: "t", promptId: "p1", promptVersion: "1", model: "mock-model", durationMs: 5 };
 
-describe("GuidlioLMService — Caching", () => {
+describe("LMService — Caching", () => {
 	it("CA-01: read_through hit — provider NOT called; result from cache; logger reports cached:true", async () => {
 		const { svc, cache, provider, log } = makeSetup({
 			get: async () => CACHED_RESULT as unknown,
@@ -71,7 +71,7 @@ describe("GuidlioLMService — Caching", () => {
 		reg.register(makePrompt({ promptId: "p1", version: "1" }));
 		const cache = makeMockCache();
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache, enableCache: false });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache, enableCache: false });
 		await svc.callText({ promptId: "p1", cache: { mode: "read_through", ttlSeconds: 60 } });
 		expect(cache.get).not.toHaveBeenCalled();
 		expect(cache.set).not.toHaveBeenCalled();
@@ -120,7 +120,7 @@ describe("GuidlioLMService — Caching", () => {
 		reg.register(makePrompt({ promptId: "p1", version: "2" }));
 		const cache = makeMockCache({ get: async () => null });
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache });
 		await svc.callText({ promptId: "p1", promptVersion: "1", cache: { mode: "read_through", ttlSeconds: 60 } });
 		await svc.callText({ promptId: "p1", promptVersion: "2", cache: { mode: "read_through", ttlSeconds: 60 } });
 		expect(cache.get.mock.calls[0][0]).not.toBe(cache.get.mock.calls[1][0]);
@@ -141,7 +141,7 @@ describe("GuidlioLMService — Caching", () => {
 		const reg = new PromptRegistry();
 		reg.register(makePrompt({ promptId: "p1", version: "1" }));
 		const provider = makeMockProvider();
-		const svc = new GuidlioLMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache });
+		const svc = new LMService({ providers: [provider], promptRegistry: reg, cacheProvider: cache });
 		// BEHAVIOR NOTE: the current impl awaits cache.set without try/catch → will throw
 		// This test locks the current behavior: set failures propagate.
 		// If changed to swallow, update the assertion to resolves.toBeDefined()

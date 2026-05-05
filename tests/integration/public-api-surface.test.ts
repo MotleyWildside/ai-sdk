@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as api from "../../src/index";
 
 describe("Public API surface", () => {
-	it("API-01: GuidlioLMService is a class (function constructor)", () => {
-		expect(typeof api.GuidlioLMService).toBe("function");
+	it("API-01: LMService is a class (function constructor)", () => {
+		expect(typeof api.LMService).toBe("function");
 	});
 
 	it("API-02: OpenAIProvider, GeminiProvider, OpenRouterProvider are classes", () => {
@@ -20,8 +20,8 @@ describe("Public API surface", () => {
 		expect(typeof api.InMemoryCacheProvider).toBe("function");
 	});
 
-	it("API-05: GuidlioOrchestrator, BasePipelineStep, DefaultPolicy are classes", () => {
-		expect(typeof api.GuidlioOrchestrator).toBe("function");
+	it("API-05: PipelineOrchestrator, BasePipelineStep, DefaultPolicy are classes", () => {
+		expect(typeof api.PipelineOrchestrator).toBe("function");
 		expect(typeof api.BasePipelineStep).toBe("function");
 		expect(typeof api.DefaultPolicy).toBe("function");
 	});

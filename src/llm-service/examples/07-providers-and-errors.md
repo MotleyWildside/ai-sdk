@@ -5,9 +5,9 @@
 Register providers once; the service selects one per-call based on model-name prefix.
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, GeminiProvider, OpenRouterProvider } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     new OpenAIProvider(process.env.OPENAI_API_KEY!),
     new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -30,7 +30,7 @@ await llm.callText({ promptId: "p", model: "anthropic/claude-3-5-sonnet", variab
 `defaultProvider` bypasses model-prefix matching entirely — every call goes to the named provider.
 
 ```typescript
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     new OpenAIProvider(process.env.OPENAI_API_KEY!),
     new GeminiProvider(process.env.GEMINI_API_KEY!),
@@ -44,7 +44,7 @@ const llm = new GuidlioLMService({
 By default, if no provider's `supportsModel` matches, the service falls back to the first registered provider and logs a warning. Enable `strictProviderSelection` to throw instead — recommended in production to surface misconfigurations early.
 
 ```typescript
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   strictProviderSelection: true,
 });
@@ -58,7 +58,7 @@ await llm.callText({ promptId: "p", model: "gemini-2.0-flash", variables: {} });
 Only `LLMTransientError` (429s, 5xx, timeouts) is retried. All other errors propagate immediately.
 
 ```typescript
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [...],
   maxAttempts: 5,            // 1 original + 4 retries (default: 3)
   retryBaseDelayMs: 500,     // base for exponential backoff (default: 1000 ms)
@@ -74,7 +74,7 @@ Delay for attempt `n` (0-indexed): `min(baseDelay × 2^n + rand(0, 1000), maxDel
 All errors extend `LLMError` and carry `provider`, `model`, `promptId?`, `requestId?`, and `cause`.
 
 ```typescript
-import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@guidlio/ai-sdk";
+import { LLMTransientError, LLMPermanentError, LLMParseError, LLMSchemaError } from "@motleywildside/ai-sdk";
 
 try {
   const result = await llm.callJSON({ promptId: "sentiment", variables: { text } });
@@ -128,9 +128,9 @@ const [summary, tags] = await Promise.all([
 Inject any `LLMLogger`-compatible logger. Every call emits a structured `llmCall` entry with fields useful for cost accounting and latency tracking.
 
 ```typescript
-import { ConsoleLogger } from "@guidlio/ai-sdk";
+import { ConsoleLogger } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [...],
   logger: new ConsoleLogger(),
   promptRegistry: registry,

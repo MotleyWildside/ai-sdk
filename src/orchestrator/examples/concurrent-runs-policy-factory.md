@@ -18,7 +18,7 @@ When two or more `orchestrator.run()` calls execute at the same time, any mutabl
 
 ```typescript
 import {
-  GuidlioOrchestrator,
+  PipelineOrchestrator,
   RetryPolicy,
   PipelineStep,
   StepResult,
@@ -26,7 +26,7 @@ import {
   ok,
   failed,
   BaseContext,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 interface Ctx extends BaseContext {
   data?: string;
@@ -45,7 +45,7 @@ class Flaky extends PipelineStep<Ctx> {
 // BUG: shared instance — attempt counters leak between concurrent runs
 const sharedPolicy = new RetryPolicy<Ctx>({ maxAttempts: 3 });
 
-const orchestrator = new GuidlioOrchestrator<Ctx>({
+const orchestrator = new PipelineOrchestrator<Ctx>({
   steps: [new Flaky()],
   policy: sharedPolicy, // ← wrong for concurrent use
 });
@@ -76,7 +76,7 @@ const [a, b] = await Promise.all([
 Pass a function instead of an instance. The orchestrator calls the factory once per `run()` invocation, so each concurrent run gets a fresh policy with its own isolated state.
 
 ```typescript
-const orchestrator = new GuidlioOrchestrator<Ctx>({
+const orchestrator = new PipelineOrchestrator<Ctx>({
   steps: [new Flaky()],
   // factory — each run() creates a new RetryPolicy instance
   policy: () => new RetryPolicy<Ctx>({ maxAttempts: 3 }),
@@ -100,7 +100,7 @@ The orchestrator still calls `policy.reset()` at the start of each run. For a fa
 If you write a custom policy with state, always implement `reset()` and call `super.reset()`:
 
 ```typescript
-import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "@guidlio/ai-sdk";
+import { DefaultPolicy, PolicyDecisionInput, PolicyDecisionOutput, BaseContext } from "@motleywildside/ai-sdk";
 
 class CountingPolicy<C extends BaseContext> extends DefaultPolicy<C> {
   private callCount = 0;

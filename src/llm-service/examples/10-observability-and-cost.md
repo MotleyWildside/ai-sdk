@@ -15,7 +15,7 @@ Every LLM call emits a structured log entry with timing, token usage, cache stat
 ## Injecting a logger
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, ConsoleLogger, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, ConsoleLogger, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -28,7 +28,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   logger: new ConsoleLogger(),
   promptRegistry: registry,
@@ -92,7 +92,7 @@ attempt 3 → ok    →  { success: true,                durationMs: 401 }
 Filter on `!meta.retry` to get one aggregated record per logical call. Filter on `meta.retry === true` to count or alert on retry frequency.
 
 ```typescript
-import type { LLMLogger } from "@guidlio/ai-sdk";
+import type { LLMLogger } from "@motleywildside/ai-sdk";
 
 class FilteringLogger implements LLMLogger {
   info(message: string, meta?: Record<string, unknown>): void {
@@ -159,7 +159,7 @@ console.log(`Processed ${myArticles.length} articles, used ${totalTokens} tokens
 Implement `LLMLogger` and translate each entry into an OTel span. The example shows the structural wiring — fill in the actual OTel SDK calls for your runtime.
 
 ```typescript
-import type { LLMLogger } from "@guidlio/ai-sdk";
+import type { LLMLogger } from "@motleywildside/ai-sdk";
 
 // Placeholder types — replace with your actual OTel SDK imports
 interface Tracer {
@@ -217,7 +217,7 @@ class OtelLLMLogger implements LLMLogger {
 }
 
 // Usage
-const llmWithOtel = new GuidlioLMService({
+const llmWithOtel = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   logger: new OtelLLMLogger(myTracer),
   promptRegistry: registry,

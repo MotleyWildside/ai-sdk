@@ -5,9 +5,9 @@
 ## Single embedding
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
 });
 

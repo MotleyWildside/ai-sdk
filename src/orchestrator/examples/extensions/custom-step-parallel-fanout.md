@@ -2,7 +2,7 @@
 
 Some processing tasks are embarrassingly parallel: summarize ten documents, embed
 a batch of paragraphs, translate a set of strings. Running them sequentially wastes
-wall-clock time. This example shows how to fire N `GuidlioLMService` calls in
+wall-clock time. This example shows how to fire N `LMService` calls in
 parallel inside a single step using `Promise.all`, share a single `AbortSignal`
 across all of them so one cancellation aborts the batch, and reduce the results
 into a single context update.
@@ -20,7 +20,7 @@ into a single context update.
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface SummarizeContext extends BaseContext {
   documents: Array<{ id: string; text: string }>;
@@ -39,16 +39,16 @@ import {
   StepRunMeta,
   ok,
   failed,
-  GuidlioLMService,
+  LMService,
   LLMTransientError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class ParallelSummarizeStep extends PipelineStep<SummarizeContext> {
   readonly name = "parallel-summarize";
 
-  private readonly llm: GuidlioLMService;
+  private readonly llm: LMService;
 
-  constructor(llm: GuidlioLMService) {
+  constructor(llm: LMService) {
     super();
     this.llm = llm;
   }
@@ -108,9 +108,9 @@ class ParallelSummarizeStep extends PipelineStep<SummarizeContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator, GuidlioLMService, RetryPolicy } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, LMService, RetryPolicy } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [
     // ... provider config
   ],
@@ -124,7 +124,7 @@ class StoreSummariesStep extends PipelineStep<SummarizeContext> {
   }
 }
 
-const orchestrator = new GuidlioOrchestrator<SummarizeContext>({
+const orchestrator = new PipelineOrchestrator<SummarizeContext>({
   steps: [new ParallelSummarizeStep(llm), new StoreSummariesStep()],
   // On LLMTransientError the whole batch is retried. This is correct for
   // a fan-out step: partial completion isn't tracked, so retry means restart.

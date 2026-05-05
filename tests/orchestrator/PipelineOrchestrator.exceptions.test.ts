@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext } from "../../src/orchestrator/types";
 import { ok, failed } from "../../src/orchestrator/statusHelpers";
 import { RetryPolicy } from "../../src/orchestrator/policies/RetryPolicy";
@@ -34,20 +34,20 @@ class SlowStep extends PipelineStep<Ctx> {
 	}
 }
 
-describe("GuidlioOrchestrator — Exception handling", () => {
+describe("PipelineOrchestrator — Exception handling", () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
 	it("EX-01: step throws — converted to failed outcome with retryable:false", async () => {
 		const obs = makeMockObserver();
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new ThrowingStep()], observer: obs });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new ThrowingStep()], observer: obs });
 		const result = await orch.run({ traceId: "t" });
 		expect(result.status).toBe(PIPELINE_STATUS.FAILED);
 		expect(obs.onError).toHaveBeenCalled();
 	});
 
 	it("EX-02: thrown step with DefaultPolicy — result.status failed; error is StepExecutionError", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new ThrowingStep()] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new ThrowingStep()] });
 		const result = await orch.run({ traceId: "t" });
 		expect(result.status).toBe(PIPELINE_STATUS.FAILED);
 		if (result.status === "failed") {
@@ -61,7 +61,7 @@ describe("GuidlioOrchestrator — Exception handling", () => {
 			readonly name = "count-throw";
 			async run(): Promise<never> { calls++; throw new Error("oops"); }
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new CountThrowStep()],
 			policy: () => new RetryPolicy({ maxAttempts: 3 }),
 		});
@@ -71,7 +71,7 @@ describe("GuidlioOrchestrator — Exception handling", () => {
 
 	it("EX-04: explicit failed({ retryable:true }) with RetryPolicy — retried up to maxAttempts", async () => {
 		const step = new RetryableFailStep();
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [step],
 			policy: () => new RetryPolicy({ maxAttempts: 3, backoffMs: () => 0 }),
 		});
@@ -89,7 +89,7 @@ describe("GuidlioOrchestrator — Exception handling", () => {
 				throw new PipelineDefinitionError("programmer error");
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new BadStep()] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new BadStep()] });
 		const result = await orch.run({ traceId: "t" });
 		expect(result.status).toBe("failed");
 		if (result.status === "failed") {
@@ -98,7 +98,7 @@ describe("GuidlioOrchestrator — Exception handling", () => {
 	});
 
 	it("EX-06: stepTimeoutMs exceeded — converts to failed outcome", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new SlowStep()],
 			stepTimeoutMs: 50,
 		});
@@ -110,7 +110,7 @@ describe("GuidlioOrchestrator — Exception handling", () => {
 
 	it("EX-08: observer.onError called with the thrown error", async () => {
 		const obs = makeMockObserver();
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [new ThrowingStep()], observer: obs });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [new ThrowingStep()], observer: obs });
 		await orch.run({ traceId: "t" });
 		expect(obs.onError).toHaveBeenCalled();
 		const [args] = obs.onError.mock.calls[0];

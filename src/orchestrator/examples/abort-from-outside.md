@@ -16,14 +16,14 @@ Pass an `AbortSignal` to `orchestrator.run()` to stop a pipeline cleanly from th
 
 ```typescript
 import {
-  GuidlioOrchestrator,
+  PipelineOrchestrator,
   PipelineStep,
   StepResult,
   StepRunMeta,
   ok,
   BaseContext,
   PipelineAbortedError,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 interface WorkCtx extends BaseContext {
   step1Done?: boolean;
@@ -64,7 +64,7 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-const orchestrator = new GuidlioOrchestrator<WorkCtx>({
+const orchestrator = new PipelineOrchestrator<WorkCtx>({
   steps: [
     new SlowStep("step-1", "step1Done", 100),
     new SlowStep("step-2", "step2Done", 5_000), // long step
@@ -138,11 +138,11 @@ async function handleSummarize(req: Request, res: Response): Promise<void> {
 The signal is forwarded to each step via `meta.signal`. Pass it into every async operation that supports it:
 
 ```typescript
-import { GuidlioLMService, LLMTransientError } from "@guidlio/ai-sdk";
+import { LMService, LLMTransientError } from "@motleywildside/ai-sdk";
 
 class SummarizeStep extends PipelineStep<SummarizeCtx> {
   readonly name = "summarize";
-  constructor(private llm: GuidlioLMService) {
+  constructor(private llm: LMService) {
     super();
   }
 

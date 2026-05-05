@@ -1,6 +1,6 @@
 # Custom Provider — Local llama.cpp Server
 
-When you run a local `llama.cpp` HTTP server you want GuidlioLMService's prompt registry, caching, and retry machinery to work with it just as with any cloud provider. Implementing `LLMProvider` against the `/completion` endpoint connects local models to the full service stack without any SDK dependency — only Node's built-in `fetch`.
+When you run a local `llama.cpp` HTTP server you want LMService's prompt registry, caching, and retry machinery to work with it just as with any cloud provider. Implementing `LLMProvider` against the `/completion` endpoint connects local models to the full service stack without any SDK dependency — only Node's built-in `fetch`.
 
 ## Concepts covered
 
@@ -27,8 +27,8 @@ import type {
   LLMEmbedResponse,
   LLMEmbedBatchRequest,
   LLMEmbedBatchResponse,
-} from "@guidlio/ai-sdk";
-import { LLMTransientError, LLMPermanentError } from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
+import { LLMTransientError, LLMPermanentError } from "@motleywildside/ai-sdk";
 
 interface LlamaCppCompletionResponse {
   content: string;
@@ -218,12 +218,12 @@ export class LlamaCppProvider implements LLMProvider {
 }
 ```
 
-## Wiring into GuidlioLMService
+## Wiring into LMService
 
 Model names must use the `"local/"` prefix so `supportsModel` matches them.
 
 ```typescript
-import { GuidlioLMService, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, PromptRegistry } from "@motleywildside/ai-sdk";
 import { LlamaCppProvider } from "./LlamaCppProvider";
 
 const registry = new PromptRegistry();
@@ -239,7 +239,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new LlamaCppProvider("http://localhost:8080")],
   promptRegistry: registry,
 });
@@ -257,9 +257,9 @@ console.log(result.text);
 Because `supportsModel` is prefix-based you can register the local provider alongside cloud providers. The service routes `"local/*"` calls to llama.cpp and everything else to the appropriate cloud provider.
 
 ```typescript
-import { OpenAIProvider } from "@guidlio/ai-sdk";
+import { OpenAIProvider } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new LlamaCppProvider(), new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });

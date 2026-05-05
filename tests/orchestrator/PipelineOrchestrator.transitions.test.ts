@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { GuidlioOrchestrator } from "../../src/orchestrator/GuidlioOrchestrator";
+import { PipelineOrchestrator } from "../../src/orchestrator/PipelineOrchestrator";
 import { BasePipelineStep as PipelineStep, StepResult, BaseContext, PipelinePolicy, PolicyDecisionInput, PolicyDecisionOutput } from "../../src/orchestrator/types";
 import { ok, failed, redirect } from "../../src/orchestrator/statusHelpers";
 import { DefaultPolicy } from "../../src/orchestrator/policies/DefaultPolicy";
@@ -60,19 +60,19 @@ class DegradePolicy<C extends BaseContext> extends DefaultPolicy<C> {
 	}
 }
 
-describe("GuidlioOrchestrator — Transitions", () => {
+describe("PipelineOrchestrator — Transitions", () => {
 	afterEach(() => {
 		vi.useRealTimers();
 	});
 
 	it("TR-01: NEXT from last step — finishes ok", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [okStep("only")] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [okStep("only")] });
 		const result = await orch.run({ traceId: "t" });
 		expect(result.status).toBe(PIPELINE_STATUS.OK);
 	});
 
 	it("TR-02: NEXT from non-last step — moves to next in order", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [okStep("s1"), okStep("s2")] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [okStep("s1"), okStep("s2")] });
 		const result = await orch.run({ traceId: "t", visited: [] });
 		if (result.status === "ok") {
 			expect(result.ctx.visited).toEqual(["s1", "s2"]);
@@ -94,7 +94,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return super.decide(input);
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s1"), okStep("s2"), okStep("s3")],
 			policy: () => new OneGotoPolicy(),
 			maxTransitions: 10,
@@ -113,7 +113,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return { transition: { type: TRANSITION_TYPE.GOTO, stepName: "nowhere" } };
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s1")],
 			policy: () => new BadGotoPolicy(),
 		});
@@ -139,7 +139,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return super.decide(input);
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new AttemptStep()],
 			policy: () => new RetryOncePolicy(),
 		});
@@ -157,7 +157,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return super.decide(input);
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s")],
 			policy: () => new DelayRetryPolicy(),
 		});
@@ -178,7 +178,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 			}
 		}
 		const controller = new AbortController();
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s")],
 			policy: () => new DelayRetryPolicy(),
 		});
@@ -199,7 +199,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return ok({ ctx });
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [new TrackStep("s1"), new TrackStep("s2")],
 			policy: () => new StopPolicy(),
 		});
@@ -209,13 +209,13 @@ describe("GuidlioOrchestrator — Transitions", () => {
 	});
 
 	it("TR-10: FAIL with Error — result.status failed; error is StepExecutionError", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({ steps: [failStep("s")] });
+		const orch = new PipelineOrchestrator<Ctx>({ steps: [failStep("s")] });
 		const result = await orch.run({ traceId: "t" });
 		expect(result.status).toBe(PIPELINE_STATUS.FAILED);
 	});
 
 	it("TR-12: DEGRADE — result.status ok; degraded.reason set", async () => {
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s")],
 			policy: () => new DegradePolicy(),
 		});
@@ -232,7 +232,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return { transition: { type: TRANSITION_TYPE.GOTO, stepName: "s1" } };
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s1")],
 			policy: () => new LoopPolicy(),
 			maxTransitions: 10,
@@ -246,7 +246,7 @@ describe("GuidlioOrchestrator — Transitions", () => {
 				return { transition: { type: TRANSITION_TYPE.GOTO, stepName: "s1" } };
 			}
 		}
-		const orch = new GuidlioOrchestrator<Ctx>({
+		const orch = new PipelineOrchestrator<Ctx>({
 			steps: [okStep("s1")],
 			policy: () => new LoopPolicy(),
 			maxTransitions: 5,

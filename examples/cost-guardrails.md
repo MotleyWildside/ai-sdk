@@ -15,7 +15,7 @@ Long pipelines that make multiple LLM calls can unexpectedly exceed your token b
 ## Context
 
 ```typescript
-import { BaseContext } from "@guidlio/ai-sdk";
+import { BaseContext } from "@motleywildside/ai-sdk";
 
 interface GuardedContext extends BaseContext {
   query: string;
@@ -50,7 +50,7 @@ class BudgetExceededError extends Error {
 ## Service setup
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider, PromptRegistry } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider, PromptRegistry } from "@motleywildside/ai-sdk";
 
 const registry = new PromptRegistry();
 
@@ -81,7 +81,7 @@ registry.register({
   output: { type: "text" },
 });
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY!)],
   promptRegistry: registry,
 });
@@ -94,12 +94,12 @@ const llm = new GuidlioLMService({
 Each step increments `ctx.tokensUsed` after every LLM call. The policy checks the running total after each `ok` outcome.
 
 ```typescript
-import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@guidlio/ai-sdk";
+import { PipelineStep, StepResult, StepRunMeta, ok, failed } from "@motleywildside/ai-sdk";
 
 class ClassifyStep extends PipelineStep<GuardedContext> {
   readonly name = "classify";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -117,7 +117,7 @@ class ClassifyStep extends PipelineStep<GuardedContext> {
 class SummarizeStep extends PipelineStep<GuardedContext> {
   readonly name = "summarize";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -135,7 +135,7 @@ class SummarizeStep extends PipelineStep<GuardedContext> {
 class RespondStep extends PipelineStep<GuardedContext> {
   readonly name = "respond";
 
-  constructor(private readonly llmSvc: GuidlioLMService) {
+  constructor(private readonly llmSvc: LMService) {
     super();
   }
 
@@ -165,7 +165,7 @@ import {
   PolicyDecisionInput,
   PolicyDecisionOutput,
   StepOutcomeOk,
-} from "@guidlio/ai-sdk";
+} from "@motleywildside/ai-sdk";
 
 class BudgetPolicy extends DefaultPolicy<GuardedContext> {
   override ok(
@@ -194,9 +194,9 @@ class BudgetPolicy extends DefaultPolicy<GuardedContext> {
 ## Wiring
 
 ```typescript
-import { GuidlioOrchestrator } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator } from "@motleywildside/ai-sdk";
 
-const orchestrator = new GuidlioOrchestrator<GuardedContext>({
+const orchestrator = new PipelineOrchestrator<GuardedContext>({
   steps: [new ClassifyStep(llm), new SummarizeStep(llm), new RespondStep(llm)],
   policy: () => new BudgetPolicy(),
   maxTransitions: 20,
@@ -208,7 +208,7 @@ const orchestrator = new GuidlioOrchestrator<GuardedContext>({
 ## Running and handling budget errors
 
 ```typescript
-import { StepExecutionError } from "@guidlio/ai-sdk";
+import { StepExecutionError } from "@motleywildside/ai-sdk";
 
 const result = await orchestrator.run({
   traceId: crypto.randomUUID(),

@@ -1,4 +1,4 @@
-# @guidlio/ai-sdk
+# @motleywildside/ai-sdk
 
 A TypeScript SDK for building AI apps with multiple LLM providers, structured outputs, prompt management, caching, and pipelines.
 
@@ -17,15 +17,15 @@ A TypeScript SDK for building AI apps with multiple LLM providers, structured ou
 ### 1. Install
 
 ```bash
-npm install @guidlio/ai-sdk
+npm install @motleywildside/ai-sdk
 ```
 
 ### 2. Initialize
 
 ```typescript
-import { GuidlioLMService, OpenAIProvider } from "@guidlio/ai-sdk";
+import { LMService, OpenAIProvider } from "@motleywildside/ai-sdk";
 
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [new OpenAIProvider(process.env.OPENAI_API_KEY)],
   enableCache: true,
 });
@@ -86,12 +86,12 @@ console.log(result.data.landmark); // Fully typed
 
 ## ⛓️ Pipelines
 
-Build complex multi-step workflows with the `GuidlioOrchestrator`:
+Build complex multi-step workflows with the `PipelineOrchestrator`:
 
 ```typescript
-import { GuidlioOrchestrator, ok } from "@guidlio/ai-sdk";
+import { PipelineOrchestrator, ok } from "@motleywildside/ai-sdk";
 
-const pipe = new GuidlioOrchestrator({
+const pipe = new PipelineOrchestrator({
   steps: [
     {
       name: "classify",
@@ -112,7 +112,7 @@ const { status, ctx } = await pipe.run({ input: "..." });
 Full control over retries, logging, and custom providers:
 
 ```typescript
-const llm = new GuidlioLMService({
+const llm = new LMService({
   providers: [...],
   maxRetries: 3,
   logger: new MyCustomLogger(),
