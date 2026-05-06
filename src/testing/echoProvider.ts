@@ -16,6 +16,10 @@ export class EchoProvider implements LLMProvider {
 		return m.startsWith("echo-");
 	}
 
+	supportsAttachments(): boolean {
+		return false;
+	}
+
 	async call(req: LLMProviderRequest): Promise<LLMProviderResponse> {
 		return {
 			text: JSON.stringify(req.messages),

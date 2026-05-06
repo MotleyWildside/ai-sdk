@@ -1,9 +1,24 @@
 /**
  * Normalized request format for LLM providers
  */
+export type LLMTextContentPart = {
+	type: "text";
+	text: string;
+};
+
+export type LLMImageUrlContentPart = {
+	type: "image_url";
+	image_url: {
+		url: string;
+		detail?: "auto" | "low" | "high";
+	};
+};
+
+export type LLMMessageContent = string | Array<LLMTextContentPart | LLMImageUrlContentPart>;
+
 export interface LLMMessage {
 	role: "system" | "user" | "assistant";
-	content: string;
+	content: LLMMessageContent;
 }
 
 export interface LLMProviderRequest {
@@ -118,4 +133,13 @@ export interface LLMProvider {
 	 * Check if this provider supports a given model
 	 */
 	supportsModel(model: string): boolean;
+
+	/**
+	 * Check whether this provider can accept multimodal attachments for a model.
+	 * Providers that omit this method are treated as attachment-unsupported.
+	 */
+	supportsAttachments?(
+		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
+		model: string,
+	): boolean;
 }

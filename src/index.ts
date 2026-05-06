@@ -52,6 +52,7 @@ export type {
 	LLMEmbedResult,
 	LLMEmbedBatchParams,
 	LLMEmbedBatchResult,
+	LLMAttachment,
 	LMServiceConfig,
 } from "./llm-service/types";
 

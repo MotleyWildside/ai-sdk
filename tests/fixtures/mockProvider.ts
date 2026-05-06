@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, type Mock } from "vitest";
 import type {
 	LLMProvider,
 	LLMProviderRequest,
@@ -13,21 +13,26 @@ import type {
 export type MockProviderOptions = {
 	name?: string;
 	supports?: (model: string) => boolean;
+	supportsAttachments?: LLMProvider["supportsAttachments"];
 	callImpl?: (req: LLMProviderRequest) => Promise<LLMProviderResponse>;
 	streamImpl?: (req: LLMProviderRequest) => Promise<LLMProviderStreamResponse>;
 	embedImpl?: (req: LLMProviderEmbedRequest) => Promise<LLMProviderEmbedResponse>;
 	embedBatchImpl?: (req: LLMProviderEmbedBatchRequest) => Promise<LLMProviderEmbedBatchResponse>;
 };
 
-export function makeMockProvider(options: MockProviderOptions = {}): LLMProvider & {
-	call: ReturnType<typeof vi.fn>;
-	callStream: ReturnType<typeof vi.fn>;
-	embed: ReturnType<typeof vi.fn>;
-	embedBatch: ReturnType<typeof vi.fn>;
-	supportsModel: ReturnType<typeof vi.fn>;
-} {
+type MockProvider = LLMProvider & {
+	call: Mock<LLMProvider["call"]>;
+	callStream: Mock<LLMProvider["callStream"]>;
+	embed: Mock<LLMProvider["embed"]>;
+	embedBatch: Mock<LLMProvider["embedBatch"]>;
+	supportsModel: Mock<LLMProvider["supportsModel"]>;
+	supportsAttachments: Mock<NonNullable<LLMProvider["supportsAttachments"]>>;
+};
+
+export function makeMockProvider(options: MockProviderOptions = {}): MockProvider {
 	const name = options.name ?? "mock";
 	const supportsFn = options.supports ?? (() => true);
+	const supportsAttachmentsFn = options.supportsAttachments ?? (() => false);
 
 	const defaultCallImpl = async (_req: LLMProviderRequest): Promise<LLMProviderResponse> => ({
 		text: "mock response",
@@ -36,28 +41,38 @@ export function makeMockProvider(options: MockProviderOptions = {}): LLMProvider
 		finishReason: "stop",
 	});
 
-	const defaultStreamImpl = async (_req: LLMProviderRequest): Promise<LLMProviderStreamResponse> => ({
+	const defaultStreamImpl = async (
+		_req: LLMProviderRequest,
+	): Promise<LLMProviderStreamResponse> => ({
 		stream: (async function* () {
 			yield { text: "mock", delta: "mock" };
 		})(),
 	});
 
-	const defaultEmbedImpl = async (_req: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> => ({
+	const defaultEmbedImpl = async (
+		_req: LLMProviderEmbedRequest,
+	): Promise<LLMProviderEmbedResponse> => ({
 		embedding: [0.1, 0.2, 0.3],
 		usage: { totalTokens: 5 },
 	});
 
-	const defaultEmbedBatchImpl = async (req: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> => ({
+	const defaultEmbedBatchImpl = async (
+		req: LLMProviderEmbedBatchRequest,
+	): Promise<LLMProviderEmbedBatchResponse> => ({
 		embeddings: req.texts.map(() => [0.1, 0.2, 0.3]),
 		usage: { totalTokens: req.texts.length * 5 },
 	});
 
-	return {
+	const provider: MockProvider = {
 		name,
-		call: vi.fn(options.callImpl ?? defaultCallImpl),
-		callStream: vi.fn(options.streamImpl ?? defaultStreamImpl),
-		embed: vi.fn(options.embedImpl ?? defaultEmbedImpl),
-		embedBatch: vi.fn(options.embedBatchImpl ?? defaultEmbedBatchImpl),
-		supportsModel: vi.fn(supportsFn),
+		call: vi.fn<LLMProvider["call"]>(options.callImpl ?? defaultCallImpl),
+		callStream: vi.fn<LLMProvider["callStream"]>(options.streamImpl ?? defaultStreamImpl),
+		embed: vi.fn<LLMProvider["embed"]>(options.embedImpl ?? defaultEmbedImpl),
+		embedBatch: vi.fn<LLMProvider["embedBatch"]>(options.embedBatchImpl ?? defaultEmbedBatchImpl),
+		supportsModel: vi.fn<LLMProvider["supportsModel"]>(supportsFn),
+		supportsAttachments:
+			vi.fn<NonNullable<LLMProvider["supportsAttachments"]>>(supportsAttachmentsFn),
 	};
+
+	return provider;
 }

@@ -71,17 +71,13 @@ export class OpenRouterProvider implements LLMProvider {
 	 */
 	private normalizeMessages(
 		messages: LLMProviderRequest["messages"],
-	): Array<
-		| { role: "system"; content: string }
-		| { role: "user"; content: string }
-		| { role: "assistant"; content: string }
-	> {
+	): Parameters<OpenRouter["chat"]["send"]>[0]["chatGenerationParams"]["messages"] {
 		return messages.map((msg) => {
 			return {
 				role: msg.role,
 				content: msg.content,
 			};
-		});
+		}) as Parameters<OpenRouter["chat"]["send"]>[0]["chatGenerationParams"]["messages"];
 	}
 
 	/**
@@ -245,5 +241,15 @@ export class OpenRouterProvider implements LLMProvider {
 	 */
 	supportsModel(model: string): boolean {
 		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
+	}
+
+	supportsAttachments(
+		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
+		model: string,
+	): boolean {
+		return (
+			this.supportsModel(model) &&
+			attachments.every((attachment) => attachment.type === "image_url")
+		);
 	}
 }

@@ -55,7 +55,7 @@ export class OpenAIProvider implements LLMProvider {
 				role: msg.role,
 				content: msg.content,
 			};
-		});
+		}) as OpenAI.Chat.Completions.ChatCompletionMessageParam[];
 	}
 
 	/**
@@ -245,5 +245,15 @@ export class OpenAIProvider implements LLMProvider {
 	 */
 	supportsModel(model: string): boolean {
 		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
+	}
+
+	supportsAttachments(
+		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
+		model: string,
+	): boolean {
+		return (
+			this.supportsModel(model) &&
+			attachments.every((attachment) => attachment.type === "image_url")
+		);
 	}
 }

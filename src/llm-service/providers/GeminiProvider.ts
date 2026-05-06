@@ -46,11 +46,11 @@ export class GeminiProvider implements LLMProvider {
 
 		for (const msg of messages) {
 			if (msg.role === "system") {
-				systemInstruction += (systemInstruction ? "\n" : "") + msg.content;
+				systemInstruction += (systemInstruction ? "\n" : "") + this.textOnlyContent(msg.content);
 			} else {
 				contents.push({
 					role: msg.role === "user" ? "user" : "model",
-					parts: [{ text: msg.content }],
+					parts: [{ text: this.textOnlyContent(msg.content) }],
 				});
 			}
 		}
@@ -237,6 +237,30 @@ export class GeminiProvider implements LLMProvider {
 	 */
 	supportsModel(model: string): boolean {
 		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
+	}
+
+	supportsAttachments(): boolean {
+		return false;
+	}
+
+	private textOnlyContent(content: LLMMessage["content"]): string {
+		if (typeof content === "string") return content;
+
+		const unsupportedPart = content.find((part) => part.type !== "text");
+		if (unsupportedPart) {
+			throw new LLMPermanentError({
+				message: "GeminiProvider does not support URL attachments in this SDK version",
+				provider: "gemini",
+				model: "unknown",
+			});
+		}
+
+		return content
+			.map((part) => {
+				if (part.type === "text") return part.text;
+				return "";
+			})
+			.join("\n");
 	}
 
 	private wrapError(error: unknown, model: string): Error {

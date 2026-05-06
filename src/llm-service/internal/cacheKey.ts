@@ -29,6 +29,7 @@ export function buildCacheKey(
 		params.seed != null ? String(params.seed) : "",
 		hasSchema ? "json" : "text",
 		schemaFingerprint,
+		JSON.stringify(params.attachments ?? []),
 	];
 
 	return createHash("sha256").update(keyParts.join("|")).digest("hex");

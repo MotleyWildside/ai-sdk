@@ -13,6 +13,7 @@ import type {
 export type MockProviderOptions = {
 	name?: string;
 	supports?: (model: string) => boolean;
+	supportsAttachments?: LLMProvider["supportsAttachments"];
 	callImpl?: (req: LLMProviderRequest) => Promise<LLMProviderResponse>;
 	streamImpl?: (req: LLMProviderRequest) => Promise<LLMProviderStreamResponse>;
 	embedImpl?: (req: LLMProviderEmbedRequest) => Promise<LLMProviderEmbedResponse>;
@@ -22,6 +23,7 @@ export type MockProviderOptions = {
 export function makeMockProvider(options: MockProviderOptions = {}): LLMProvider {
 	const name = options.name ?? "mock";
 	const supportsFn = options.supports ?? (() => true);
+	const supportsAttachmentsFn = options.supportsAttachments ?? (() => false);
 
 	const defaultCallImpl = async (_req: LLMProviderRequest): Promise<LLMProviderResponse> => ({
 		text: "mock response",
@@ -52,12 +54,15 @@ export function makeMockProvider(options: MockProviderOptions = {}): LLMProvider
 		usage: { totalTokens: req.texts.length * 5 },
 	});
 
-	return {
+	const provider = {
 		name,
 		call: vi.fn(options.callImpl ?? defaultCallImpl),
 		callStream: vi.fn(options.streamImpl ?? defaultStreamImpl),
 		embed: vi.fn(options.embedImpl ?? defaultEmbedImpl),
 		embedBatch: vi.fn(options.embedBatchImpl ?? defaultEmbedBatchImpl),
 		supportsModel: vi.fn(supportsFn),
-	} as unknown as LLMProvider;
+		supportsAttachments: vi.fn(supportsAttachmentsFn),
+	};
+
+	return provider;
 }

@@ -1,7 +1,12 @@
 import { randomUUID } from "crypto";
 import { PromptRegistry } from "./prompts-registry/PromptRegistry";
 import type { PromptDefinition } from "./prompts-registry/types";
-import type { LLMProvider, LLMProviderResponse } from "./providers/types";
+import type {
+	LLMImageUrlContentPart,
+	LLMMessage,
+	LLMProvider,
+	LLMProviderResponse,
+} from "./providers/types";
 import type { CacheProvider } from "./cache/types";
 import { InMemoryCacheProvider } from "./cache/CacheProvider";
 import type {
@@ -17,6 +22,7 @@ import type {
 	LLMEmbedBatchResult,
 	LMServiceConfig,
 	ProviderRequest,
+	LLMAttachment,
 } from "./types";
 import type { LLMLogger } from "../logger/types";
 import { CallContext, logOutcome, errorMessage } from "./internal/logContext";
@@ -24,6 +30,7 @@ import { callWithRetries } from "./internal/retry";
 import { buildCacheKey } from "./internal/cacheKey";
 import { selectProvider } from "./internal/providerSelection";
 import { parseAndRepairJSON, validateSchema, enforceJsonInstruction } from "./internal/jsonHelpers";
+import { LLMPermanentError } from "./errors";
 
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -36,7 +43,7 @@ type ResolvedPrompt = {
 	provider: LLMProvider;
 };
 
-type Messages = ReturnType<PromptRegistry["buildMessages"]>;
+type Messages = LLMMessage[];
 
 /**
  * Main LLM Gateway Service
@@ -132,7 +139,10 @@ export class LMService {
 			providerName: provider.name,
 			startedAt: Date.now(),
 		};
-		const messages = this.promptReg.buildMessages(prompt, params.variables);
+		const messages = this.attachToUserMessage(
+			this.promptReg.buildMessages(prompt, params.variables),
+			params.attachments,
+		);
 		const providerRequest = this.buildProviderRequest(params, prompt, model, messages, "text");
 
 		try {
@@ -261,7 +271,10 @@ export class LMService {
 		}
 
 		const rawMessages = this.promptReg.buildMessages(prompt, params.variables);
-		const messages = options.prepareMessages ? options.prepareMessages(rawMessages) : rawMessages;
+		const preparedMessages = options.prepareMessages
+			? options.prepareMessages(rawMessages)
+			: rawMessages;
+		const messages = this.attachToUserMessage(preparedMessages, params.attachments);
 
 		const providerRequest = this.buildProviderRequest(
 			params,
@@ -366,6 +379,17 @@ export class LMService {
 		}
 
 		const provider = selectProvider(this.providers, model, this.config, this.logger);
+		if (
+			params.attachments?.length &&
+			provider.supportsAttachments?.(params.attachments, model) !== true
+		) {
+			throw new LLMPermanentError({
+				message: `Provider ${provider.name} does not support attachments for model ${model}`,
+				provider: provider.name,
+				model,
+				promptId: params.promptId,
+			});
+		}
 		return { prompt, model, provider };
 	}
 
@@ -424,5 +448,38 @@ export class LMService {
 
 	private generateTraceId(): string {
 		return randomUUID();
+	}
+
+	private attachToUserMessage(messages: Messages, attachments?: LLMAttachment[]): Messages {
+		if (!attachments?.length) return messages;
+
+		const lastUserIndex = messages.findLastIndex((message) => message.role === "user");
+		if (lastUserIndex === -1) {
+			throw new Error("Attachments require at least one user prompt message");
+		}
+
+		return messages.map((message, index) => {
+			if (index !== lastUserIndex) return message;
+
+			const textParts =
+				typeof message.content === "string"
+					? [{ type: "text" as const, text: message.content }]
+					: message.content;
+
+			return {
+				...message,
+				content: [...textParts, ...this.normalizeAttachments(attachments)],
+			};
+		});
+	}
+
+	private normalizeAttachments(attachments: LLMAttachment[]): LLMImageUrlContentPart[] {
+		return attachments.map((attachment) => ({
+			type: "image_url",
+			image_url: {
+				url: attachment.url,
+				...(attachment.detail ? { detail: attachment.detail } : {}),
+			},
+		}));
 	}
 }

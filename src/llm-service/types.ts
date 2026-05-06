@@ -4,6 +4,13 @@ import type { CacheProvider, CacheConfig } from "./cache/types";
 import { PromptRegistry } from "./prompts-registry/PromptRegistry";
 import type { LLMLogger } from "../logger/types";
 export type { LLMCallLogEntry } from "../logger/types";
+import type { LLMMessage } from "./providers/types";
+
+export type LLMAttachment = {
+	type: "image_url";
+	url: string;
+	detail?: "auto" | "low" | "high";
+};
 
 /**
  * Parameters for text generation
@@ -12,6 +19,7 @@ export interface LLMTextParams {
 	promptId: string;
 	promptVersion?: string | number;
 	variables?: Record<string, unknown>;
+	attachments?: LLMAttachment[];
 	model?: string;
 	temperature?: number;
 	maxTokens?: number;
@@ -126,7 +134,7 @@ export interface LLMEmbedBatchResult {
  * Normalized request shape passed to a provider
  */
 export interface ProviderRequest {
-	messages: ReturnType<PromptRegistry["buildMessages"]>;
+	messages: LLMMessage[];
 	model: string;
 	temperature: number;
 	maxTokens?: number;

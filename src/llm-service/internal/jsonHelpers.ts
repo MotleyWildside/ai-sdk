@@ -73,7 +73,7 @@ const JSON_INSTRUCTION =
  * (or a new system message inserted at position 0 if none exists).
  * Pure — does not mutate the input.
  */
-export function enforceJsonInstruction<M extends { role: string; content: string }>(
+export function enforceJsonInstruction<M extends { role: string; content: unknown }>(
 	messages: M[],
 ): M[] {
 	if (messages.length === 0) return messages;
@@ -83,7 +83,7 @@ export function enforceJsonInstruction<M extends { role: string; content: string
 		const updated = [...messages];
 		updated[systemIdx] = {
 			...updated[systemIdx],
-			content: `${updated[systemIdx].content}\n\n${JSON_INSTRUCTION}`,
+			content: `${String(updated[systemIdx].content)}\n\n${JSON_INSTRUCTION}`,
 		};
 		return updated;
 	}

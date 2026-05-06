@@ -98,4 +98,24 @@ describe("buildCacheKey", () => {
 		const k2 = buildCacheKey({ ...baseParams }, basePrompt, baseModel);
 		expect(k1).not.toBe(k2);
 	});
+
+	it("CK-07: different attachments produce different hashes", () => {
+		const k1 = buildCacheKey(
+			{
+				...baseParams,
+				attachments: [{ type: "image_url", url: "https://example.com/a.png", detail: "high" }],
+			},
+			basePrompt,
+			baseModel,
+		);
+		const k2 = buildCacheKey(
+			{
+				...baseParams,
+				attachments: [{ type: "image_url", url: "https://example.com/b.png", detail: "high" }],
+			},
+			basePrompt,
+			baseModel,
+		);
+		expect(k1).not.toBe(k2);
+	});
 });

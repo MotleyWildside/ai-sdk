@@ -1,19 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LMService } from "../../src/llm-service/LMService";
+import { LLMPermanentError } from "../../src/llm-service/errors";
+import type { LMServiceConfig } from "../../src/llm-service/types";
 import { PromptRegistry } from "../../src/llm-service/prompts-registry/PromptRegistry";
 import { makeMockProvider } from "../fixtures/mockProvider";
 import { makeMockLogger } from "../fixtures/mockLogger";
 import { makePrompt } from "../fixtures/prompts";
 
-function makeService(overrides: Parameters<typeof LMService["prototype"]["constructor"]>[0] = { providers: [makeMockProvider()] }) {
+function makeService(
+	overrides: LMServiceConfig = {
+		providers: [makeMockProvider()],
+	},
+) {
 	return new LMService(overrides);
 }
 
 describe("LMService — Constructor", () => {
 	it("C-01: throws when providers array is empty", () => {
-		expect(() => new LMService({ providers: [] })).toThrow(
-			"At least one provider",
-		);
+		expect(() => new LMService({ providers: [] })).toThrow("At least one provider");
 	});
 
 	it("C-02: two providers with the same name — second overwrites first in Map", () => {
@@ -51,9 +55,7 @@ describe("LMService — Constructor", () => {
 
 	it("C-06: defaultProvider referencing unregistered name still constructs (fallback at call-time)", () => {
 		const gemini = makeMockProvider({ name: "gemini" });
-		expect(
-			() => new LMService({ providers: [gemini], defaultProvider: "openai" }),
-		).not.toThrow();
+		expect(() => new LMService({ providers: [gemini], defaultProvider: "openai" })).not.toThrow();
 	});
 
 	it("C-07: full config round-trips (promptRegistry getter returns the one supplied)", () => {
@@ -82,7 +84,9 @@ describe("LMService — callText happy path", () => {
 	});
 
 	it("T-02: prompt with systemPrompt + userPrompt produces 2-message array in order", async () => {
-		reg.register(makePrompt({ promptId: "p2", version: "1", systemPrompt: "You are X", userPrompt: "Hello" }));
+		reg.register(
+			makePrompt({ promptId: "p2", version: "1", systemPrompt: "You are X", userPrompt: "Hello" }),
+		);
 		await svc.callText({ promptId: "p2" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.messages).toHaveLength(2);
@@ -112,16 +116,28 @@ describe("LMService — callText happy path", () => {
 	});
 
 	it("T-06: params.model overrides prompt.modelDefaults.model and config.defaultModel", async () => {
-		reg.register(makePrompt({ promptId: "p6", version: "1", modelDefaults: { model: "prompt-model" } }));
-		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		reg.register(
+			makePrompt({ promptId: "p6", version: "1", modelDefaults: { model: "prompt-model" } }),
+		);
+		const svcWithDefault = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultModel: "config-model",
+		});
 		await svcWithDefault.callText({ promptId: "p6", model: "params-model" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("params-model");
 	});
 
 	it("T-07: prompt.modelDefaults.model used when params.model absent", async () => {
-		reg.register(makePrompt({ promptId: "p7", version: "1", modelDefaults: { model: "prompt-model" } }));
-		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		reg.register(
+			makePrompt({ promptId: "p7", version: "1", modelDefaults: { model: "prompt-model" } }),
+		);
+		const svcWithDefault = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultModel: "config-model",
+		});
 		await svcWithDefault.callText({ promptId: "p7" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("prompt-model");
@@ -129,7 +145,11 @@ describe("LMService — callText happy path", () => {
 
 	it("T-08: config.defaultModel used when neither params nor prompt specify a model", async () => {
 		reg.register(makePrompt({ promptId: "p8", version: "1", modelDefaults: { model: "" } }));
-		const svcWithDefault = new LMService({ providers: [provider], promptRegistry: reg, defaultModel: "config-model" });
+		const svcWithDefault = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultModel: "config-model",
+		});
 		await svcWithDefault.callText({ promptId: "p8" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.model).toBe("config-model");
@@ -142,16 +162,36 @@ describe("LMService — callText happy path", () => {
 	});
 
 	it("T-10a: params.temperature takes precedence over all", async () => {
-		reg.register(makePrompt({ promptId: "t10a", version: "1", modelDefaults: { model: "m", temperature: 0.5 } }));
-		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		reg.register(
+			makePrompt({
+				promptId: "t10a",
+				version: "1",
+				modelDefaults: { model: "m", temperature: 0.5 },
+			}),
+		);
+		const s = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultTemperature: 0.3,
+		});
 		await s.callText({ promptId: "t10a", temperature: 0.9 });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.9);
 	});
 
 	it("T-10b: prompt.modelDefaults.temperature used when params absent", async () => {
-		reg.register(makePrompt({ promptId: "t10b", version: "1", modelDefaults: { model: "m", temperature: 0.5 } }));
-		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		reg.register(
+			makePrompt({
+				promptId: "t10b",
+				version: "1",
+				modelDefaults: { model: "m", temperature: 0.5 },
+			}),
+		);
+		const s = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultTemperature: 0.3,
+		});
 		await s.callText({ promptId: "t10b" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.5);
@@ -159,7 +199,11 @@ describe("LMService — callText happy path", () => {
 
 	it("T-10c: config.defaultTemperature used when prompt has no temperature", async () => {
 		reg.register(makePrompt({ promptId: "t10c", version: "1", modelDefaults: { model: "m" } }));
-		const s = new LMService({ providers: [provider], promptRegistry: reg, defaultTemperature: 0.3 });
+		const s = new LMService({
+			providers: [provider],
+			promptRegistry: reg,
+			defaultTemperature: 0.3,
+		});
 		await s.callText({ promptId: "t10c" });
 		const [req] = provider.call.mock.calls[0];
 		expect(req.temperature).toBe(0.3);
@@ -198,7 +242,9 @@ describe("LMService — callText happy path", () => {
 	it("T-14: auto-generated traceId matches expected format", async () => {
 		reg.register(makePrompt({ promptId: "t14", version: "1" }));
 		const result = await svc.callText({ promptId: "t14" });
-		expect(result.traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+		expect(result.traceId).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+		);
 	});
 
 	it("T-15: durationMs is a non-negative number", async () => {
@@ -241,5 +287,65 @@ describe("LMService — callText happy path", () => {
 		expect(entry.promptId).toBe("t19");
 		expect(entry.model).toBe("mock-model");
 		expect(entry.usage).toBeDefined();
+	});
+
+	it("T-20: image attachments append to the final user message as multimodal parts", async () => {
+		provider = makeMockProvider({ supportsAttachments: () => true });
+		svc = new LMService({ providers: [provider], promptRegistry: reg });
+		reg.register(
+			makePrompt({
+				promptId: "t20",
+				version: "1",
+				systemPrompt: "You are visual",
+				userPrompt: "Describe this",
+			}),
+		);
+
+		await svc.callText({
+			promptId: "t20",
+			attachments: [{ type: "image_url", url: "https://example.com/cat.png", detail: "high" }],
+		});
+
+		const [req] = provider.call.mock.calls[0];
+		expect(req.messages[0].content).toBe("You are visual");
+		expect(req.messages[1].content).toEqual([
+			{ type: "text", text: "Describe this" },
+			{
+				type: "image_url",
+				image_url: { url: "https://example.com/cat.png", detail: "high" },
+			},
+		]);
+	});
+
+	it("T-21: attachments require provider support", async () => {
+		reg.register(makePrompt({ promptId: "t21", version: "1", userPrompt: "Describe this" }));
+
+		await expect(
+			svc.callText({
+				promptId: "t21",
+				attachments: [{ type: "image_url", url: "https://example.com/cat.png" }],
+			}),
+		).rejects.toThrow(LLMPermanentError);
+		expect(provider.call).not.toHaveBeenCalled();
+	});
+
+	it("T-22: attachments require a user prompt message", async () => {
+		provider = makeMockProvider({ supportsAttachments: () => true });
+		svc = new LMService({ providers: [provider], promptRegistry: reg });
+		reg.register(
+			makePrompt({
+				promptId: "t22",
+				version: "1",
+				systemPrompt: "Only system",
+				userPrompt: "",
+			}),
+		);
+
+		await expect(
+			svc.callText({
+				promptId: "t22",
+				attachments: [{ type: "image_url", url: "https://example.com/cat.png" }],
+			}),
+		).rejects.toThrow(/Attachments require at least one user prompt message/);
 	});
 });
