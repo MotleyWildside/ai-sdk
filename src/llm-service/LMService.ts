@@ -20,6 +20,8 @@ import type {
 	LLMEmbedResult,
 	LLMEmbedBatchParams,
 	LLMEmbedBatchResult,
+	LLMImageParams,
+	LLMImageResult,
 	LMServiceConfig,
 	ProviderRequest,
 	LLMAttachment,
@@ -221,6 +223,95 @@ export class LMService {
 				model: params.model,
 			}),
 		);
+	}
+
+	/**
+	 * Generate images — accepts either a raw prompt string or a registry prompt
+	 * (same `promptId` / `variables` contract as `callText`).
+	 */
+	async generateImage(params: LLMImageParams): Promise<LLMImageResult> {
+		const traceId = params.traceId || this.generateTraceId();
+
+		let prompt: string;
+		let model: string;
+		let promptId: string | undefined;
+		let promptVersion: string | number | undefined;
+
+		if ("promptId" in params) {
+			const def = this.promptReg.getPrompt(params.promptId, params.promptVersion);
+			if (!def) {
+				throw new Error(`Prompt not found: ${params.promptId}@${params.promptVersion ?? "latest"}`);
+			}
+			model = params.model || def.modelDefaults.model || this.config.defaultModel || "";
+			if (!model) {
+				throw new Error(
+					`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or LMServiceConfig.defaultModel`,
+				);
+			}
+			const messages = this.promptReg.buildMessages(def, params.variables);
+			prompt = messages
+				.map((m) => (typeof m.content === "string" ? m.content : ""))
+				.filter(Boolean)
+				.join("\n\n");
+			promptId = params.promptId;
+			promptVersion = def.version;
+		} else {
+			prompt = params.prompt;
+			model = params.model;
+		}
+
+		const provider = selectProvider(this.providers, model, this.config, this.logger);
+		const ctx: CallContext = {
+			traceId,
+			model,
+			providerName: provider.name,
+			startedAt: Date.now(),
+			...(promptId !== undefined ? { promptId, promptVersion } : {}),
+		};
+
+		if (!provider.generateImage) {
+			throw new LLMPermanentError({
+				message: `Provider ${provider.name} does not support image generation`,
+				provider: provider.name,
+				model,
+			});
+		}
+
+		try {
+			const response = await callWithRetries(
+				() =>
+					provider.generateImage!({
+						prompt,
+						model,
+						numberOfImages: params.numberOfImages,
+						aspectRatio: params.aspectRatio,
+						negativePrompt: params.negativePrompt,
+						personGeneration: params.personGeneration,
+						outputMimeType: params.outputMimeType,
+						imageSize: params.imageSize,
+						outputCompressionQuality: params.outputCompressionQuality,
+						guidanceScale: params.guidanceScale,
+						enhancePrompt: params.enhancePrompt,
+						seed: params.seed,
+						inputImages: params.inputImages,
+						signal: params.signal,
+					}),
+				this.config,
+				this.logger,
+				ctx,
+			);
+			logOutcome(this.logger, ctx, { success: true });
+			return {
+				images: response.images,
+				text: response.text,
+				model,
+				traceId,
+				durationMs: Date.now() - ctx.startedAt,
+			};
+		} catch (error) {
+			logOutcome(this.logger, ctx, { success: false, error: errorMessage(error) });
+			throw error;
+		}
 	}
 
 	// ─── Shared executors ────────────────────────────────────────────────────

@@ -104,6 +104,14 @@ describe("EchoProvider — contract tests", () => {
 		await expect(svc.callText({ promptId: "ec8" })).rejects.toThrow(/No registered provider/);
 	});
 
+	it("EC-08b: generateImage returns base64-encoded prompt as image data", async () => {
+		const svc = new LMService({ providers: [echo] });
+		const result = await svc.generateImage({ prompt: "a cat", model: "echo-image-1" });
+		expect(result.images).toHaveLength(1);
+		expect(result.images[0].mimeType).toBe("image/png");
+		expect(Buffer.from(result.images[0].data, "base64").toString()).toBe("a cat");
+	});
+
 	it("EC-09: EchoProvider + second MockProvider — routing by supportsModel", async () => {
 		const mock = makeMockProvider({ name: "other", supports: (m) => m.startsWith("other-") });
 		reg.register(makePrompt({ promptId: "ep1", version: "1", userPrompt: "Hi" }));

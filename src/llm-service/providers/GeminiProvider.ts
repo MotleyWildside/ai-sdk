@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI, Content, TaskType, EmbedContentRequest } from "@google/generative-ai";
+import { GoogleGenAI, ApiError, PersonGeneration } from "@google/genai";
+import type { Content, Part } from "@google/genai";
 import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
 import type {
 	LLMProvider,
@@ -9,146 +10,82 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 	LLMMessage,
 } from "./types";
 
-/**
- * Gemini provider adapter
- */
 export class GeminiProvider implements LLMProvider {
 	readonly name = "gemini";
 
-	/**
-	 * Gemini model prefixes that this provider supports
-	 */
-	private readonly supportedModelPrefixes = [
-		"gemini-",
-		"gemini-embedding-",
-		"text-embedding-004",
-		"learnlm-",
-	];
+	private static readonly IMAGEN_PREFIX = "imagen-";
+	private static readonly NANO_BANANA_PATTERN = /^gemini-.*-image(-preview)?$/i;
+	private static readonly VISION_PATTERN = /^gemini-(1\.5|2\.|3)/i;
 
-	private genAI: GoogleGenerativeAI;
+	private ai: GoogleGenAI;
 
-	constructor(private apiKey: string) {
-		this.genAI = new GoogleGenerativeAI(this.apiKey);
+	constructor(apiKey: string) {
+		this.ai = new GoogleGenAI({ apiKey });
 	}
 
-	/**
-	 * Convert normalized messages to Gemini format
-	 */
-	private convertMessages(messages: LLMMessage[]): {
-		systemInstruction?: string;
-		contents: Content[];
-	} {
-		let systemInstruction = "";
-		const contents: Content[] = [];
-
-		for (const msg of messages) {
-			if (msg.role === "system") {
-				systemInstruction += (systemInstruction ? "\n" : "") + this.textOnlyContent(msg.content);
-			} else {
-				contents.push({
-					role: msg.role === "user" ? "user" : "model",
-					parts: [{ text: this.textOnlyContent(msg.content) }],
-				});
-			}
-		}
-
-		return {
-			systemInstruction: systemInstruction || undefined,
-			contents,
-		};
-	}
-
-	/**
-	 * Call Gemini API with normalized request
-	 */
 	async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
 		try {
 			const { systemInstruction, contents } = this.convertMessages(request.messages);
 
-			const model = this.genAI.getGenerativeModel({
+			const r = await this.ai.models.generateContent({
 				model: request.model,
-				systemInstruction,
+				contents,
+				config: {
+					systemInstruction,
+					temperature: request.temperature,
+					topP: request.topP,
+					maxOutputTokens: request.maxTokens,
+					responseMimeType: request.responseFormat === "json" ? "application/json" : "text/plain",
+					abortSignal: request.signal,
+				},
 			});
-
-			const generationConfig = {
-				temperature: request.temperature,
-				topP: request.topP,
-				maxOutputTokens: request.maxTokens,
-				responseMimeType: request.responseFormat === "json" ? "application/json" : "text/plain",
-			};
-
-			// For standard call, we can use generateContent if there's only one "user" message and no history
-			// or startChat for full history. Given LLMProviderRequest has full history, startChat is better.
-			const chat = model.startChat({
-				history: contents.slice(0, -1),
-				generationConfig,
-			});
-
-			const lastMessage = contents[contents.length - 1];
-			const result = await chat.sendMessage(
-				lastMessage.parts,
-				request.signal ? { signal: request.signal } : undefined,
-			);
-			const response = await result.response;
-			const text = response.text();
 
 			return {
-				text,
-				raw: response,
-				usage: response.usageMetadata
+				text: r.text ?? "",
+				raw: r,
+				usage: r.usageMetadata
 					? {
-							promptTokens: response.usageMetadata.promptTokenCount,
-							completionTokens: response.usageMetadata.candidatesTokenCount,
-							totalTokens: response.usageMetadata.totalTokenCount,
+							promptTokens: r.usageMetadata.promptTokenCount ?? 0,
+							completionTokens: r.usageMetadata.candidatesTokenCount ?? 0,
+							totalTokens: r.usageMetadata.totalTokenCount ?? 0,
 						}
 					: undefined,
-				finishReason: response.candidates?.[0]?.finishReason,
+				finishReason: r.candidates?.[0]?.finishReason?.toString(),
 			};
 		} catch (error) {
 			throw this.wrapError(error, request.model);
 		}
 	}
 
-	/**
-	 * Call Gemini API with streaming response
-	 */
 	async callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse> {
 		try {
 			const { systemInstruction, contents } = this.convertMessages(request.messages);
 
-			const model = this.genAI.getGenerativeModel({
+			const stream = await this.ai.models.generateContentStream({
 				model: request.model,
-				systemInstruction,
+				contents,
+				config: {
+					systemInstruction,
+					temperature: request.temperature,
+					topP: request.topP,
+					maxOutputTokens: request.maxTokens,
+					responseMimeType: request.responseFormat === "json" ? "application/json" : "text/plain",
+					abortSignal: request.signal,
+				},
 			});
-
-			const generationConfig = {
-				temperature: request.temperature,
-				topP: request.topP,
-				maxOutputTokens: request.maxTokens,
-				responseMimeType: request.responseFormat === "json" ? "application/json" : "text/plain",
-			};
-
-			const chat = model.startChat({
-				history: contents.slice(0, -1),
-				generationConfig,
-			});
-
-			const lastMessage = contents[contents.length - 1];
-			const result = await chat.sendMessageStream(
-				lastMessage.parts,
-				request.signal ? { signal: request.signal } : undefined,
-			);
 
 			const wrapError = (e: unknown) => this.wrapError(e, request.model);
 			return {
 				stream: (async function* () {
 					let fullText = "";
 					try {
-						for await (const chunk of result.stream) {
-							const delta = chunk.text();
+						for await (const chunk of stream) {
+							const delta = chunk.text ?? "";
 							fullText += delta;
 							yield { text: fullText, delta };
 						}
@@ -162,142 +99,263 @@ export class GeminiProvider implements LLMProvider {
 		}
 	}
 
-	/**
-	 * Generate vector embedding for text
-	 */
 	async embed(request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> {
 		try {
-			const modelName = request.model;
-			const model = this.genAI.getGenerativeModel({ model: modelName });
+			const r = await this.ai.models.embedContent({
+				model: request.model,
+				contents: [request.text],
+				config: {
+					taskType: request.taskType ?? "RETRIEVAL_DOCUMENT",
+					outputDimensionality: request.dimensions,
+					abortSignal: request.signal,
+				},
+			});
 
-			// Cast taskType to TaskType enum if it's a string that matches
-			const taskType =
-				request.taskType === "RETRIEVAL_QUERY"
-					? TaskType.RETRIEVAL_QUERY
-					: TaskType.RETRIEVAL_DOCUMENT;
-
-			const result = await model.embedContent(
-				{
-					content: { parts: [{ text: request.text }], role: "user" },
-					taskType,
-					// outputDimensionality is not in the standard EmbedContentRequest type in some versions
-					// but it is supported by the API for some models. Using cast for this specific field.
-					...(request.dimensions ? { outputDimensionality: request.dimensions } : {}),
-				} as EmbedContentRequest & { outputDimensionality?: number },
-				request.signal ? { signal: request.signal } : undefined,
-			);
-
+			const values = r.embeddings?.[0]?.values;
 			return {
-				embedding: Array.from(result.embedding.values),
+				embedding: values ? Array.from(values) : [],
 			};
 		} catch (error) {
 			throw this.wrapError(error, request.model);
 		}
 	}
 
-	/**
-	 * Generate vector embeddings for multiple texts using batch API
-	 */
 	async embedBatch(request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> {
 		try {
-			const modelName = request.model;
-			const model = this.genAI.getGenerativeModel({ model: modelName });
-
-			const taskType =
-				request.taskType === "RETRIEVAL_QUERY"
-					? TaskType.RETRIEVAL_QUERY
-					: TaskType.RETRIEVAL_DOCUMENT;
-
-			const result = await model.batchEmbedContents(
-				{
-					requests: request.texts.map(
-						(text) =>
-							({
-								content: { parts: [{ text }], role: "user" },
-								taskType,
-								...(request.dimensions ? { outputDimensionality: request.dimensions } : {}),
-							}) as EmbedContentRequest & {
-								outputDimensionality?: number;
-							},
-					),
+			const r = await this.ai.models.embedContent({
+				model: request.model,
+				contents: request.texts,
+				config: {
+					taskType: request.taskType ?? "RETRIEVAL_DOCUMENT",
+					outputDimensionality: request.dimensions,
+					abortSignal: request.signal,
 				},
-				request.signal ? { signal: request.signal } : undefined,
-			);
+			});
 
 			return {
-				embeddings: result.embeddings.map((e) => Array.from(e.values)),
+				embeddings: (r.embeddings ?? []).map((e) => Array.from(e.values ?? [])),
 			};
 		} catch (error) {
 			throw this.wrapError(error, request.model);
 		}
 	}
 
-	/**
-	 * Check if this provider supports a given model
-	 */
-	supportsModel(model: string): boolean {
-		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
-	}
-
-	supportsAttachments(): boolean {
-		return false;
-	}
-
-	private textOnlyContent(content: LLMMessage["content"]): string {
-		if (typeof content === "string") return content;
-
-		const unsupportedPart = content.find((part) => part.type !== "text");
-		if (unsupportedPart) {
+	async generateImage(request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
+		try {
+			if (this.isImagenModel(request.model)) {
+				return this.generateViaImagen(request);
+			}
+			if (this.isNanoBananaModel(request.model)) {
+				return this.generateViaGemini(request);
+			}
 			throw new LLMPermanentError({
-				message: "GeminiProvider does not support URL attachments in this SDK version",
+				message: `Model ${request.model} is not an image-generation model. Use an imagen-* or gemini-*-image model.`,
 				provider: "gemini",
-				model: "unknown",
+				model: request.model,
 			});
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
+
+	supportsModel(model: string): boolean {
+		const lower = model.toLowerCase();
+		return (
+			lower.startsWith("gemini-") ||
+			lower.startsWith("learnlm-") ||
+			lower.startsWith("gemini-embedding-") ||
+			lower.startsWith("text-embedding-") ||
+			lower.startsWith(GeminiProvider.IMAGEN_PREFIX)
+		);
+	}
+
+	supportsAttachments(
+		_attachments: Array<{ type: "image_url"; url: string }>,
+		model: string,
+	): boolean {
+		return GeminiProvider.VISION_PATTERN.test(model);
+	}
+
+	supportsImageGeneration(model: string): boolean {
+		return this.isImagenModel(model) || this.isNanoBananaModel(model);
+	}
+
+	private isImagenModel(model: string): boolean {
+		return model.toLowerCase().startsWith(GeminiProvider.IMAGEN_PREFIX);
+	}
+
+	private isNanoBananaModel(model: string): boolean {
+		return GeminiProvider.NANO_BANANA_PATTERN.test(model);
+	}
+
+	private async generateViaImagen(
+		request: LLMProviderImageRequest,
+	): Promise<LLMProviderImageResponse> {
+		const personGen = this.toPersonGeneration(request.personGeneration);
+
+		const r = await this.ai.models.generateImages({
+			model: request.model,
+			prompt: request.prompt,
+			config: {
+				numberOfImages: request.numberOfImages,
+				aspectRatio: request.aspectRatio,
+				negativePrompt: request.negativePrompt,
+				...(personGen !== undefined ? { personGeneration: personGen } : {}),
+				outputMimeType: request.outputMimeType,
+				imageSize: request.imageSize,
+				outputCompressionQuality: request.outputCompressionQuality,
+				guidanceScale: request.guidanceScale,
+				enhancePrompt: request.enhancePrompt,
+				seed: request.seed,
+				...(request.signal ? { abortSignal: request.signal } : {}),
+			},
+		});
+
+		return {
+			images: (r.generatedImages ?? []).map((g) => ({
+				data: g.image?.imageBytes ?? "",
+				mimeType: g.image?.mimeType ?? request.outputMimeType ?? "image/png",
+			})),
+			raw: r,
+		};
+	}
+
+	private async generateViaGemini(
+		request: LLMProviderImageRequest,
+	): Promise<LLMProviderImageResponse> {
+		const parts: Part[] = [];
+
+		if (request.inputImages?.length) {
+			for (const img of request.inputImages) {
+				parts.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
+			}
+		}
+		parts.push({ text: request.prompt });
+
+		const contents: Content[] = [{ role: "user", parts }];
+
+		const r = await this.ai.models.generateContent({
+			model: request.model,
+			contents,
+			config: {
+				responseModalities: ["IMAGE", "TEXT"],
+				imageConfig: {
+					...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+					...(request.imageSize ? { imageSize: request.imageSize } : {}),
+					...(request.outputCompressionQuality !== undefined
+						? { outputCompressionQuality: request.outputCompressionQuality }
+						: {}),
+				},
+				...(request.signal ? { abortSignal: request.signal } : {}),
+			},
+		});
+
+		const images: Array<{ data: string; mimeType: string }> = [];
+		let text = "";
+
+		for (const part of r.candidates?.[0]?.content?.parts ?? []) {
+			if (part.inlineData?.data) {
+				images.push({
+					data: part.inlineData.data,
+					mimeType: part.inlineData.mimeType ?? "image/png",
+				});
+			} else if (part.text) {
+				text += part.text;
+			}
 		}
 
+		return { images, text: text || undefined, raw: r };
+	}
+
+	private convertMessages(messages: LLMMessage[]): {
+		systemInstruction?: string;
+		contents: Content[];
+	} {
+		let systemInstruction = "";
+		const contents: Content[] = [];
+
+		for (const msg of messages) {
+			if (msg.role === "system") {
+				systemInstruction += (systemInstruction ? "\n" : "") + this.extractText(msg.content);
+			} else {
+				contents.push({
+					role: msg.role === "user" ? "user" : "model",
+					parts: this.buildParts(msg.content),
+				});
+			}
+		}
+
+		return { systemInstruction: systemInstruction || undefined, contents };
+	}
+
+	private buildParts(content: LLMMessage["content"]): Part[] {
+		if (typeof content === "string") return [{ text: content }];
+
+		return content.map((part): Part => {
+			if (part.type === "text") return { text: part.text };
+
+			const url = part.image_url.url;
+			if (url.startsWith("data:")) {
+				const [header, data] = url.split(",");
+				const mimeType = header.replace("data:", "").replace(";base64", "");
+				return { inlineData: { data, mimeType } };
+			}
+
+			// HTTP/HTTPS URL — pass as fileData reference
+			return { fileData: { fileUri: url, mimeType: "image/jpeg" } };
+		});
+	}
+
+	private extractText(content: LLMMessage["content"]): string {
+		if (typeof content === "string") return content;
 		return content
-			.map((part) => {
-				if (part.type === "text") return part.text;
-				return "";
-			})
+			.filter((p) => p.type === "text")
+			.map((p) => (p.type === "text" ? p.text : ""))
 			.join("\n");
+	}
+
+	private toPersonGeneration(
+		value: LLMProviderImageRequest["personGeneration"],
+	): PersonGeneration | undefined {
+		if (!value) return undefined;
+		const map: Record<string, PersonGeneration> = {
+			dont_allow: PersonGeneration.DONT_ALLOW,
+			allow_adult: PersonGeneration.ALLOW_ADULT,
+			allow_all: PersonGeneration.ALLOW_ALL,
+		};
+		return map[value];
 	}
 
 	private wrapError(error: unknown, model: string): Error {
 		if (error instanceof LLMError) return error;
 
-		const message = error instanceof Error ? error.message : String(error);
-		const cause = error instanceof Error ? error : undefined;
-
-		if (
-			message.includes("rate limit") ||
-			message.includes("429") ||
-			message.includes("overloaded")
-		) {
-			return new LLMTransientError({
-				message: `Gemini API transient error: ${message}`,
-				provider: "gemini",
-				model,
-				statusCode: 429,
-				cause,
-			});
-		}
-
-		if (message.includes("permission") || message.includes("403") || message.includes("API key")) {
+		if (error instanceof ApiError) {
+			const { status, message } = error;
+			if (status === 429 || status >= 500) {
+				return new LLMTransientError({
+					message: `Gemini API transient error: ${message}`,
+					provider: "gemini",
+					model,
+					statusCode: status,
+					cause: error,
+				});
+			}
 			return new LLMPermanentError({
-				message: `Gemini API auth error: ${message}`,
+				message: `Gemini API error: ${message}`,
 				provider: "gemini",
 				model,
-				statusCode: 403,
-				cause,
+				statusCode: status,
+				cause: error,
 			});
 		}
 
+		const message = error instanceof Error ? error.message : String(error);
+		const cause = error instanceof Error ? error : new Error(String(error));
 		return new LLMError({
 			message: `Gemini API error: ${message}`,
 			provider: "gemini",
 			model,
-			cause: cause ?? new Error(String(error)),
+			cause,
 		});
 	}
 }

@@ -67,6 +67,10 @@ describe("Public API surface", () => {
 		expect(e).toBeInstanceOf(Error);
 	});
 
+	it("API-10b: LMService has generateImage method", () => {
+		expect(typeof api.LMService.prototype.generateImage).toBe("function");
+	});
+
 	it("API-11: ConsoleLogger is a class", () => {
 		expect(typeof api.ConsoleLogger).toBe("function");
 		const log = new api.ConsoleLogger();

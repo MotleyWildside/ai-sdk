@@ -119,6 +119,55 @@ export interface LLMEmbedResult {
 	model: string;
 }
 
+type LLMImageSharedParams = {
+	numberOfImages?: number;
+	aspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+	negativePrompt?: string;
+	personGeneration?: "dont_allow" | "allow_adult" | "allow_all";
+	outputMimeType?: "image/png" | "image/jpeg";
+	/** Output resolution. Nano Banana supports "1K" | "2K" | "4K"; Imagen supports "1K" | "2K". */
+	imageSize?: "1K" | "2K" | "4K";
+	/** JPEG compression quality 0–100. Only applied when outputMimeType is "image/jpeg". */
+	outputCompressionQuality?: number;
+	/** Imagen only. Controls prompt adherence vs. creativity (higher = more literal). */
+	guidanceScale?: number;
+	/** Imagen only. Let the SDK rewrite the prompt for better quality. */
+	enhancePrompt?: boolean;
+	/** Imagen only. Fixed seed for reproducible results. */
+	seed?: number;
+	inputImages?: Array<{ data: string; mimeType: string }>;
+	traceId?: string;
+	signal?: AbortSignal;
+};
+
+/** Image generation from a raw prompt string */
+export type LLMImageRawParams = LLMImageSharedParams & {
+	prompt: string;
+	model: string;
+};
+
+/** Image generation resolved through the prompt registry */
+export type LLMImagePromptParams = LLMImageSharedParams & {
+	promptId: string;
+	promptVersion?: string | number;
+	variables?: Record<string, unknown>;
+	model?: string;
+};
+
+/** Parameters for image generation — either a raw prompt or a registry prompt */
+export type LLMImageParams = LLMImageRawParams | LLMImagePromptParams;
+
+/**
+ * Result from image generation
+ */
+export interface LLMImageResult {
+	images: Array<{ data: string; mimeType: string }>;
+	text?: string;
+	model: string;
+	traceId: string;
+	durationMs: number;
+}
+
 /**
  * Result from batch embedding generation
  */

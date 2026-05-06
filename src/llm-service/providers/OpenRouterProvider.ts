@@ -9,6 +9,8 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 } from "./types";
 import type { ChatResponse } from "@openrouter/sdk/models";
 
@@ -251,5 +253,14 @@ export class OpenRouterProvider implements LLMProvider {
 			this.supportsModel(model) &&
 			attachments.every((attachment) => attachment.type === "image_url")
 		);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	async generateImage(_request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
+		throw new LLMPermanentError({
+			message: "OpenRouterProvider does not support image generation. Use GeminiProvider with an imagen-* or gemini-*-image model.",
+			provider: "openrouter",
+			model: _request.model,
+		});
 	}
 }

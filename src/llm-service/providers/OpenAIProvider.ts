@@ -9,6 +9,8 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 } from "./types";
 
 /**
@@ -255,5 +257,15 @@ export class OpenAIProvider implements LLMProvider {
 			this.supportsModel(model) &&
 			attachments.every((attachment) => attachment.type === "image_url")
 		);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	async generateImage(_request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
+		throw new LLMPermanentError({
+			message:
+				"OpenAIProvider does not support image generation. Use GeminiProvider with an imagen-* or gemini-*-image model.",
+			provider: "openai",
+			model: _request.model,
+		});
 	}
 }

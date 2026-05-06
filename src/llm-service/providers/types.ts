@@ -101,6 +101,45 @@ export interface LLMProviderEmbedBatchResponse {
 }
 
 /**
+ * Request for image generation
+ */
+export interface LLMProviderImageRequest {
+	prompt: string;
+	model: string;
+	numberOfImages?: number;
+	aspectRatio?: "1:1" | "3:4" | "4:3" | "9:16" | "16:9";
+	negativePrompt?: string;
+	personGeneration?: "dont_allow" | "allow_adult" | "allow_all";
+	outputMimeType?: "image/png" | "image/jpeg";
+	/** Output resolution. Nano Banana supports "1K" | "2K" | "4K"; Imagen supports "1K" | "2K". */
+	imageSize?: "1K" | "2K" | "4K";
+	/** JPEG compression quality 0–100. Only applied when outputMimeType is "image/jpeg". */
+	outputCompressionQuality?: number;
+	/** Imagen only. Controls prompt adherence vs. creativity (higher = more literal). */
+	guidanceScale?: number;
+	/** Imagen only. Let the SDK rewrite the prompt for better quality. */
+	enhancePrompt?: boolean;
+	/** Imagen only. Fixed seed for reproducible results. */
+	seed?: number;
+	inputImages?: Array<{ data: string; mimeType: string }>;
+	signal?: AbortSignal;
+}
+
+export interface LLMGeneratedImage {
+	data: string;
+	mimeType: string;
+}
+
+/**
+ * Response from image generation
+ */
+export interface LLMProviderImageResponse {
+	images: LLMGeneratedImage[];
+	raw: unknown;
+	text?: string;
+}
+
+/**
  * Base interface for all LLM providers
  */
 export interface LLMProvider {
@@ -142,4 +181,15 @@ export interface LLMProvider {
 		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
 		model: string,
 	): boolean;
+
+	/**
+	 * Generate images from a text prompt. Optional — providers that don't support image
+	 * generation omit this method.
+	 */
+	generateImage?(request: LLMProviderImageRequest): Promise<LLMProviderImageResponse>;
+
+	/**
+	 * Whether this provider can generate images for the given model.
+	 */
+	supportsImageGeneration?(model: string): boolean;
 }

@@ -7,6 +7,8 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 } from "../../src/llm-service/providers/types";
 
 export class EchoProvider implements LLMProvider {
@@ -52,6 +54,17 @@ export class EchoProvider implements LLMProvider {
 		return {
 			embeddings: r.texts.map(() => [0.1, 0.2]),
 			usage: { totalTokens: r.texts.length },
+		};
+	}
+
+	supportsImageGeneration(model: string): boolean {
+		return model.startsWith("echo-image-");
+	}
+
+	async generateImage(r: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
+		return {
+			images: [{ data: Buffer.from(r.prompt).toString("base64"), mimeType: "image/png" }],
+			raw: r,
 		};
 	}
 }

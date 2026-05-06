@@ -8,16 +8,20 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 } from "../../src/llm-service/providers/types";
 
 export type MockProviderOptions = {
 	name?: string;
 	supports?: (model: string) => boolean;
 	supportsAttachments?: LLMProvider["supportsAttachments"];
+	supportsImageGeneration?: LLMProvider["supportsImageGeneration"];
 	callImpl?: (req: LLMProviderRequest) => Promise<LLMProviderResponse>;
 	streamImpl?: (req: LLMProviderRequest) => Promise<LLMProviderStreamResponse>;
 	embedImpl?: (req: LLMProviderEmbedRequest) => Promise<LLMProviderEmbedResponse>;
 	embedBatchImpl?: (req: LLMProviderEmbedBatchRequest) => Promise<LLMProviderEmbedBatchResponse>;
+	generateImageImpl?: (req: LLMProviderImageRequest) => Promise<LLMProviderImageResponse>;
 };
 
 type MockProvider = LLMProvider & {
@@ -27,6 +31,8 @@ type MockProvider = LLMProvider & {
 	embedBatch: Mock<LLMProvider["embedBatch"]>;
 	supportsModel: Mock<LLMProvider["supportsModel"]>;
 	supportsAttachments: Mock<NonNullable<LLMProvider["supportsAttachments"]>>;
+	supportsImageGeneration: Mock<NonNullable<LLMProvider["supportsImageGeneration"]>>;
+	generateImage: Mock<NonNullable<LLMProvider["generateImage"]>>;
 };
 
 export function makeMockProvider(options: MockProviderOptions = {}): MockProvider {
@@ -63,6 +69,15 @@ export function makeMockProvider(options: MockProviderOptions = {}): MockProvide
 		usage: { totalTokens: req.texts.length * 5 },
 	});
 
+	const defaultGenerateImageImpl = async (
+		_req: LLMProviderImageRequest,
+	): Promise<LLMProviderImageResponse> => ({
+		images: [{ data: "AA==", mimeType: "image/png" }],
+		raw: {},
+	});
+
+	const supportsImageGenerationFn = options.supportsImageGeneration ?? (() => false);
+
 	const provider: MockProvider = {
 		name,
 		call: vi.fn<LLMProvider["call"]>(options.callImpl ?? defaultCallImpl),
@@ -72,6 +87,11 @@ export function makeMockProvider(options: MockProviderOptions = {}): MockProvide
 		supportsModel: vi.fn<LLMProvider["supportsModel"]>(supportsFn),
 		supportsAttachments:
 			vi.fn<NonNullable<LLMProvider["supportsAttachments"]>>(supportsAttachmentsFn),
+		supportsImageGeneration:
+			vi.fn<NonNullable<LLMProvider["supportsImageGeneration"]>>(supportsImageGenerationFn),
+		generateImage: vi.fn<NonNullable<LLMProvider["generateImage"]>>(
+			options.generateImageImpl ?? defaultGenerateImageImpl,
+		),
 	};
 
 	return provider;

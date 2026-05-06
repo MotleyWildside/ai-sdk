@@ -52,9 +52,15 @@ export type {
 	LLMEmbedResult,
 	LLMEmbedBatchParams,
 	LLMEmbedBatchResult,
+	LLMImageParams,
+	LLMImageRawParams,
+	LLMImagePromptParams,
+	LLMImageResult,
 	LLMAttachment,
 	LMServiceConfig,
 } from "./llm-service/types";
+
+export type { LLMGeneratedImage } from "./llm-service/providers/types";
 
 export type { CacheConfig } from "./llm-service/cache/types";
 export type { LLMLogger } from "./logger/types";
