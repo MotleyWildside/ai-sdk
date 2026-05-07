@@ -9,7 +9,7 @@ export function parseAndRepairJSON<T>(
 	text: string,
 	providerName: string,
 	model: string,
-	promptId: string,
+	promptId?: string,
 	requestId?: string,
 ): T {
 	try {
@@ -42,7 +42,7 @@ export function validateSchema<T>(
 	schema: z.ZodSchema<T> | undefined,
 	providerName: string,
 	model: string,
-	promptId: string,
+	promptId?: string,
 	requestId?: string,
 ): T {
 	if (!schema) return parsed;

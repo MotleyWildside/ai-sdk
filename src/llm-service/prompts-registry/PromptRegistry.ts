@@ -45,7 +45,7 @@ export class PromptRegistry {
 	/**
 	 * Build messages array from prompt definition and variables
 	 */
-	buildMessages(
+	static buildMessages(
 		prompt: PromptDefinition,
 		variables?: Record<string, unknown>,
 	): Array<{ role: "system" | "user" | "assistant"; content: string }> {
@@ -58,7 +58,7 @@ export class PromptRegistry {
 		if (prompt.systemPrompt) {
 			messages.push({
 				role: "system",
-				content: this.interpolate(prompt.systemPrompt, variables),
+				content: PromptRegistry.interpolate(prompt.systemPrompt, variables),
 			});
 		}
 
@@ -66,7 +66,7 @@ export class PromptRegistry {
 		if (prompt.userPrompt) {
 			messages.push({
 				role: "user",
-				content: this.interpolate(prompt.userPrompt, variables),
+				content: PromptRegistry.interpolate(prompt.userPrompt, variables),
 			});
 		}
 
@@ -77,7 +77,7 @@ export class PromptRegistry {
 	 * Interpolate variables in template string
 	 * Supports {variableName} syntax
 	 */
-	private interpolate(template: string, variables?: Record<string, unknown>): string {
+	static interpolate(template: string, variables?: Record<string, unknown>): string {
 		if (!variables) {
 			return template;
 		}

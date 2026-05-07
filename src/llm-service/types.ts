@@ -44,6 +44,51 @@ export interface LLMJsonParams<T = unknown> extends LLMTextParams {
 	jsonSchema?: z.ZodSchema<T>;
 }
 
+// ─── Raw (registry-free) call params ────────────────────────────────────────
+
+interface LLMCallSharedParams {
+	attachments?: LLMAttachment[];
+	temperature?: number;
+	maxTokens?: number;
+	topP?: number;
+	seed?: number;
+	idempotencyKey?: string;
+	cache?: CacheConfig;
+	traceId?: string;
+	signal?: AbortSignal;
+}
+
+/**
+ * Raw text call — caller supplies the full prompt, no registry lookup.
+ * `model` is required because there is no prompt definition to fall back to.
+ */
+export interface LLMTextRawParams extends LLMCallSharedParams {
+	systemPrompt?: string;
+	userPrompt: string;
+	model: string;
+}
+
+/**
+ * Raw JSON call — same as `LLMTextRawParams` plus an optional Zod schema.
+ */
+export interface LLMJsonRawParams<T = unknown> extends LLMTextRawParams {
+	jsonSchema?: z.ZodSchema<T>;
+}
+
+/**
+ * Raw streaming call. `cache` and `idempotencyKey` are excluded — streams are not cached.
+ */
+export type LLMStreamRawParams = Omit<LLMTextRawParams, "cache" | "idempotencyKey">;
+
+/** Either a registry-based or a raw text call */
+export type LLMTextInput = LLMTextParams | LLMTextRawParams;
+
+/** Either a registry-based or a raw JSON call */
+export type LLMJsonInput<T = unknown> = LLMJsonParams<T> | LLMJsonRawParams<T>;
+
+/** Either a registry-based or a raw streaming call */
+export type LLMStreamInput = LLMStreamParams | LLMStreamRawParams;
+
 /**
  * Parameters for embedding generation
  */
@@ -81,8 +126,8 @@ export interface LLMTextResult {
 	finishReason?: string;
 	requestId?: string;
 	traceId: string;
-	promptId: string;
-	promptVersion: string | number;
+	promptId?: string;
+	promptVersion?: string | number;
 	model: string;
 	durationMs: number;
 }
@@ -96,8 +141,8 @@ export interface LLMStreamResult {
 		delta: string;
 	}>;
 	traceId: string;
-	promptId: string;
-	promptVersion: string | number;
+	promptId?: string;
+	promptVersion?: string | number;
 	model: string;
 }
 

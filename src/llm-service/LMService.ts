@@ -25,6 +25,9 @@ import type {
 	LMServiceConfig,
 	ProviderRequest,
 	LLMAttachment,
+	LLMTextRawParams,
+	LLMJsonRawParams,
+	LLMStreamRawParams,
 } from "./types";
 import type { LLMLogger } from "../logger/types";
 import { CallContext, logOutcome, errorMessage } from "./internal/logContext";
@@ -80,7 +83,7 @@ export class LMService {
 	// ─── Public API ──────────────────────────────────────────────────────────
 
 	/**
-	 * Generate text response
+	 * Generate text response from a registered prompt
 	 */
 	async callText(params: LLMTextParams): Promise<LLMTextResult> {
 		return this.executeGeneration<LLMTextResult>(params, {
@@ -90,7 +93,17 @@ export class LMService {
 	}
 
 	/**
-	 * Generate JSON response with schema validation
+	 * Generate text response from a raw prompt — no registry lookup required
+	 */
+	async callTextRaw(params: LLMTextRawParams): Promise<LLMTextResult> {
+		return this.executeRawGeneration<LLMTextResult>(params, {
+			responseFormat: "text",
+			mapResponse: (_response, base) => base,
+		});
+	}
+
+	/**
+	 * Generate JSON response with schema validation from a registered prompt
 	 */
 	async callJSON<T = unknown>(params: LLMJsonParams<T>): Promise<LLMJsonResult<T>> {
 		return this.executeGeneration<LLMJsonResult<T>>(params, {
@@ -124,7 +137,33 @@ export class LMService {
 	}
 
 	/**
-	 * Generate streaming response.
+	 * Generate JSON response with schema validation from a raw prompt — no registry lookup required
+	 */
+	async callJSONRaw<T = unknown>(params: LLMJsonRawParams<T>): Promise<LLMJsonResult<T>> {
+		return this.executeRawGeneration<LLMJsonResult<T>>(params, {
+			responseFormat: "json",
+			prepareMessages: enforceJsonInstruction,
+			mapResponse: (response, base, { providerName }) => {
+				const parsed = parseAndRepairJSON<T>(
+					response.text,
+					providerName,
+					base.model,
+					response.requestId,
+				);
+				const validated = validateSchema<T>(
+					parsed,
+					params.jsonSchema,
+					providerName,
+					base.model,
+					response.requestId,
+				);
+				return { ...base, data: validated };
+			},
+		});
+	}
+
+	/**
+	 * Generate streaming response from a registered prompt.
 	 * Note: streaming bypasses retry logic — handle reconnection at the call site if needed.
 	 * `cache` and `idempotencyKey` are excluded from the param type; pass them and TypeScript
 	 * will reject the call at compile time.
@@ -142,7 +181,7 @@ export class LMService {
 			startedAt: Date.now(),
 		};
 		const messages = this.attachToUserMessage(
-			this.promptReg.buildMessages(prompt, params.variables),
+			PromptRegistry.buildMessages(prompt, params.variables),
 			params.attachments,
 		);
 		const providerRequest = this.buildProviderRequest(params, prompt, model, messages, "text");
@@ -167,6 +206,53 @@ export class LMService {
 				traceId,
 				promptId: params.promptId,
 				promptVersion: prompt.version,
+				model,
+			};
+		} catch (error) {
+			logOutcome(this.logger, ctx, {
+				success: false,
+				error: errorMessage(error),
+				durationMs: Date.now() - ctx.startedAt,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Generate streaming response from a raw prompt — no registry lookup required.
+	 * Note: streaming bypasses retry logic — handle reconnection at the call site if needed.
+	 */
+	async callStreamRaw(params: LLMStreamRawParams): Promise<LLMStreamResult> {
+		const traceId = params.traceId || this.generateTraceId();
+		const { messages: rawMessages, model, provider } = this.resolveRaw(params);
+
+		const ctx: CallContext = {
+			traceId,
+			model,
+			providerName: provider.name,
+			startedAt: Date.now(),
+		};
+		const messages = this.attachToUserMessage(rawMessages, params.attachments);
+		const providerRequest = this.buildRawProviderRequest(params, model, messages, "text");
+
+		try {
+			const response = await provider.callStream(providerRequest);
+			const logger = this.logger;
+			return {
+				stream: (async function* () {
+					try {
+						yield* response.stream;
+						logOutcome(logger, ctx, { success: true, durationMs: Date.now() - ctx.startedAt });
+					} catch (error) {
+						logOutcome(logger, ctx, {
+							success: false,
+							error: errorMessage(error),
+							durationMs: Date.now() - ctx.startedAt,
+						});
+						throw error;
+					}
+				})(),
+				traceId,
 				model,
 			};
 		} catch (error) {
@@ -248,7 +334,7 @@ export class LMService {
 					`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or LMServiceConfig.defaultModel`,
 				);
 			}
-			const messages = this.promptReg.buildMessages(def, params.variables);
+			const messages = PromptRegistry.buildMessages(def, params.variables);
 			prompt = messages
 				.map((m) => (typeof m.content === "string" ? m.content : ""))
 				.filter(Boolean)
@@ -361,7 +447,7 @@ export class LMService {
 			}
 		}
 
-		const rawMessages = this.promptReg.buildMessages(prompt, params.variables);
+		const rawMessages = PromptRegistry.buildMessages(prompt, params.variables);
 		const preparedMessages = options.prepareMessages
 			? options.prepareMessages(rawMessages)
 			: rawMessages;
@@ -413,6 +499,69 @@ export class LMService {
 				success: false,
 				error: errorMessage(error),
 			});
+			throw error;
+		}
+	}
+
+	/**
+	 * Shared pipeline for `callText` and `callJSON` on the raw (registry-free) path.
+	 */
+	private async executeRawGeneration<TResult extends LLMTextResult>(
+		params: LLMTextRawParams,
+		options: {
+			responseFormat: "text" | "json";
+			prepareMessages?: (messages: Messages) => Messages;
+			mapResponse: (
+				response: LLMProviderResponse,
+				base: LLMTextResult,
+				genCtx: { providerName: string },
+			) => TResult;
+		},
+	): Promise<TResult> {
+		const { messages: rawMessages, model, provider } = this.resolveRaw(params);
+
+		const traceId = params.traceId || this.generateTraceId();
+		const ctx: CallContext = {
+			traceId,
+			model,
+			providerName: provider.name,
+			startedAt: Date.now(),
+		};
+
+		const preparedMessages = options.prepareMessages
+			? options.prepareMessages(rawMessages)
+			: rawMessages;
+		const messages = this.attachToUserMessage(preparedMessages, params.attachments);
+		const providerRequest = this.buildRawProviderRequest(
+			params,
+			model,
+			messages,
+			options.responseFormat,
+		);
+
+		try {
+			const response = await callWithRetries(
+				() => provider.call(providerRequest),
+				this.config,
+				this.logger,
+				ctx,
+			);
+
+			const base: LLMTextResult = {
+				text: response.text,
+				usage: response.usage,
+				finishReason: response.finishReason,
+				requestId: response.requestId,
+				traceId,
+				model,
+				durationMs: Date.now() - ctx.startedAt,
+			};
+			const result = options.mapResponse(response, base, { providerName: provider.name });
+
+			logOutcome(this.logger, ctx, { success: true, usage: response.usage });
+			return result;
+		} catch (error) {
+			logOutcome(this.logger, ctx, { success: false, error: errorMessage(error) });
 			throw error;
 		}
 	}
@@ -482,6 +631,53 @@ export class LMService {
 			});
 		}
 		return { prompt, model, provider };
+	}
+
+	/**
+	 * Resolve messages, model, and provider for a raw (registry-free) call.
+	 */
+	private resolveRaw(params: LLMTextRawParams): {
+		messages: LLMMessage[];
+		model: string;
+		provider: LLMProvider;
+	} {
+		const messages: LLMMessage[] = [];
+		if (params.systemPrompt) messages.push({ role: "system", content: params.systemPrompt });
+		messages.push({ role: "user", content: params.userPrompt });
+		const { model } = params;
+		const provider = selectProvider(this.providers, model, this.config, this.logger);
+		if (
+			params.attachments?.length &&
+			provider.supportsAttachments?.(params.attachments, model) !== true
+		) {
+			throw new LLMPermanentError({
+				message: `Provider ${provider.name} does not support attachments for model ${model}`,
+				provider: provider.name,
+				model,
+			});
+		}
+		return { messages, model, provider };
+	}
+
+	/**
+	 * Build a normalized provider request for the raw (registry-free) path.
+	 */
+	private buildRawProviderRequest(
+		params: Pick<LLMTextRawParams, "temperature" | "maxTokens" | "topP" | "seed" | "signal">,
+		model: string,
+		messages: Messages,
+		responseFormat: "text" | "json",
+	): ProviderRequest {
+		return {
+			messages,
+			model,
+			temperature: params.temperature ?? this.config.defaultTemperature ?? DEFAULT_TEMPERATURE,
+			maxTokens: params.maxTokens,
+			topP: params.topP,
+			seed: params.seed,
+			responseFormat,
+			signal: params.signal,
+		};
 	}
 
 	/**

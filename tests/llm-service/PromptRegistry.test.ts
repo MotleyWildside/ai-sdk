@@ -49,14 +49,14 @@ describe("PromptRegistry", () => {
 
 	it("PR-07: buildMessages with no system, user only — one-message array", () => {
 		const p = makePrompt({ promptId: "p1", version: "1", userPrompt: "Hello" });
-		const msgs = reg.buildMessages(p);
+		const msgs = PromptRegistry.buildMessages(p);
 		expect(msgs).toHaveLength(1);
 		expect(msgs[0].role).toBe("user");
 	});
 
 	it("PR-08: buildMessages with system + user — both produced; order preserved", () => {
 		const p = makePrompt({ promptId: "p1", version: "1", systemPrompt: "You are", userPrompt: "Hello" });
-		const msgs = reg.buildMessages(p);
+		const msgs = PromptRegistry.buildMessages(p);
 		expect(msgs).toHaveLength(2);
 		expect(msgs[0].role).toBe("system");
 		expect(msgs[1].role).toBe("user");
@@ -64,19 +64,19 @@ describe("PromptRegistry", () => {
 
 	it("PR-09: buildMessages with no vars passed but placeholder in template — {name} stays literal", () => {
 		const p = makePrompt({ promptId: "p1", version: "1", userPrompt: "Hello {name}" });
-		const msgs = reg.buildMessages(p);
+		const msgs = PromptRegistry.buildMessages(p);
 		expect(msgs[0].content).toBe("Hello {name}");
 	});
 
 	it("PR-11: variable with numeric 0 → '0'; null → 'null'; undefined → literal {name}", () => {
 		const p = makePrompt({ promptId: "p1", version: "1", userPrompt: "{zero} {nul} {undef}" });
-		const msgs = reg.buildMessages(p, { zero: 0, nul: null as unknown as undefined });
+		const msgs = PromptRegistry.buildMessages(p, { zero: 0, nul: null as unknown as undefined });
 		expect(msgs[0].content).toBe("0 null {undef}");
 	});
 
 	it("PR-12: variable array value → JSON.stringify", () => {
 		const p = makePrompt({ promptId: "p1", version: "1", userPrompt: "{arr}" });
-		const msgs = reg.buildMessages(p, { arr: [1, 2, 3] });
+		const msgs = PromptRegistry.buildMessages(p, { arr: [1, 2, 3] });
 		expect(msgs[0].content).toBe("[1,2,3]");
 	});
 });
