@@ -125,8 +125,8 @@ type LLMImageSharedParams = {
 	negativePrompt?: string;
 	personGeneration?: "dont_allow" | "allow_adult" | "allow_all";
 	outputMimeType?: "image/png" | "image/jpeg";
-	/** Output resolution. Nano Banana supports "1K" | "2K" | "4K"; Imagen supports "1K" | "2K". */
-	imageSize?: "1K" | "2K" | "4K";
+	/** Output resolution. Nano Banana supports "0.5K" (3.1 Flash only, maps to "512") | "1K" | "2K" | "4K"; Imagen supports "1K" | "2K". */
+	imageSize?: "0.5K" | "1K" | "2K" | "4K";
 	/** JPEG compression quality 0–100. Only applied when outputMimeType is "image/jpeg". */
 	outputCompressionQuality?: number;
 	/** Imagen only. Controls prompt adherence vs. creativity (higher = more literal). */

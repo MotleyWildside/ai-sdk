@@ -202,7 +202,7 @@ export class GeminiProvider implements LLMProvider {
 				negativePrompt: request.negativePrompt,
 				...(personGen !== undefined ? { personGeneration: personGen } : {}),
 				outputMimeType: request.outputMimeType,
-				imageSize: request.imageSize,
+				imageSize: this.toImageSize(request.imageSize),
 				outputCompressionQuality: request.outputCompressionQuality,
 				guidanceScale: request.guidanceScale,
 				enhancePrompt: request.enhancePrompt,
@@ -241,7 +241,7 @@ export class GeminiProvider implements LLMProvider {
 				responseModalities: ["IMAGE", "TEXT"],
 				imageConfig: {
 					...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
-					...(request.imageSize ? { imageSize: request.imageSize } : {}),
+					...(request.imageSize ? { imageSize: this.toImageSize(request.imageSize) } : {}),
 					...(request.outputCompressionQuality !== undefined
 						? { outputCompressionQuality: request.outputCompressionQuality }
 						: {}),
@@ -312,6 +312,11 @@ export class GeminiProvider implements LLMProvider {
 			.filter((p) => p.type === "text")
 			.map((p) => (p.type === "text" ? p.text : ""))
 			.join("\n");
+	}
+
+	private toImageSize(value: LLMProviderImageRequest["imageSize"]): string | undefined {
+		if (!value) return undefined;
+		return value === "0.5K" ? "512" : value;
 	}
 
 	private toPersonGeneration(
