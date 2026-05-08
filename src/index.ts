@@ -17,7 +17,10 @@ export {
 	PipelineOrchestrator,
 	BasePipelineStep,
 	DefaultPolicy,
+	RetryPolicy,
+	RedirectRoutingPolicy,
 	LoggerPipelineObserver,
+	NoopPipelineObserver,
 	PIPELINE_STATUS,
 	OUTCOME_TYPE,
 	TRANSITION_TYPE,
@@ -27,6 +30,7 @@ export {
 	PipelineError,
 	PipelineDefinitionError,
 	StepExecutionError,
+	PipelineAbortedError,
 } from "./orchestrator";
 
 export type {
@@ -37,7 +41,18 @@ export type {
 	BaseContext,
 	StepResult,
 	StepOutcome,
+	StepOutcomeOk,
+	StepOutcomeFailed,
+	StepOutcomeRedirect,
+	Transition,
+	PipelinePolicy,
+	PolicyDecisionInput,
+	PolicyDecisionOutput,
+	ContextAdjustment,
+	PipelineStatus,
 	PipelineObserver,
+	RetryPolicyOptions,
+	RouteMap,
 } from "./orchestrator";
 
 // Global Types

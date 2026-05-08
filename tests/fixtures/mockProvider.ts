@@ -76,7 +76,7 @@ export function makeMockProvider(options: MockProviderOptions = {}): MockProvide
 		raw: {},
 	});
 
-	const supportsImageGenerationFn = options.supportsImageGeneration ?? (() => false);
+	const supportsImageGenerationFn = options.supportsImageGeneration ?? (() => true);
 
 	const provider: MockProvider = {
 		name,

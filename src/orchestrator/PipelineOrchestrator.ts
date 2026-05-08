@@ -2,22 +2,28 @@ import type {
 	PipelineRunResult,
 	PipelineStep,
 	PipelinePolicy,
-	Transition,
 	PolicyDecisionInput,
 	StepOutcome,
-	ContextAdjustment,
 	StepResult,
 	StepRunMeta,
 	PipelineOrchestratorConfig,
 	PipelineRunOptions,
 	BaseContext,
 } from "./types";
-import { PipelineDefinitionError, PipelineAbortedError, StepExecutionError } from "./errors";
+import { PipelineDefinitionError, PipelineAbortedError } from "./errors";
 import { NoopPipelineObserver, type PipelineObserver } from "./observers";
 import { getTraceId } from "./utils";
-import { PIPELINE_STATUS, TRANSITION_TYPE, DEFAULT_MAX_TRANSITIONS } from "./constants";
+import { PIPELINE_STATUS, DEFAULT_MAX_TRANSITIONS } from "./constants";
 import { DefaultPolicy } from "./policies/DefaultPolicy";
 import { logger } from "../logger/logger";
+import { TransitionRuntime } from "./internal/transitionRuntime";
+import {
+	classifyRunFailure,
+	classifyStepException,
+	failedRunResult,
+	shouldPropagateRunFailure,
+	toError,
+} from "./internal/failureClassifier";
 
 export class PipelineOrchestrator<C extends BaseContext> {
 	private readonly stepsByName: Map<string, PipelineStep<C>>;
@@ -69,6 +75,11 @@ export class PipelineOrchestrator<C extends BaseContext> {
 		const startTime = Date.now();
 		const signal = opts?.signal;
 		let ctx = { ...initialCtx, traceId } as C;
+		const transitionRuntime = new TransitionRuntime<C>(
+			this.stepsByName,
+			this.stepOrder,
+			this.observer,
+		);
 
 		this.observer.onRunStart({ traceId });
 
@@ -132,12 +143,16 @@ export class PipelineOrchestrator<C extends BaseContext> {
 				const transition = policyOutput.transition;
 
 				if (policyOutput.contextAdjustment) {
-					ctx = this.applyContextAdjustment(ctx, policyOutput.contextAdjustment, traceId);
+					ctx = transitionRuntime.applyContextAdjustment(
+						ctx,
+						policyOutput.contextAdjustment,
+						traceId,
+					);
 				}
 
 				this.observer.onTransition?.({ traceId, stepName: currentStepName, transition });
 
-				const result = await this.applyTransition({
+				const result = await transitionRuntime.apply({
 					transition,
 					ctx,
 					currentStepName,
@@ -157,133 +172,15 @@ export class PipelineOrchestrator<C extends BaseContext> {
 		} catch (error) {
 			// PipelineDefinitionError is a programmer mistake — let it propagate so
 			// it surfaces loudly rather than being silently swallowed into a result.
-			if (error instanceof PipelineDefinitionError) throw error;
+			if (shouldPropagateRunFailure(error)) throw error;
 
 			const durationMs = Date.now() - startTime;
-			const pipelineError =
-				error instanceof PipelineAbortedError
-					? error
-					: new StepExecutionError(
-							`Unexpected error during pipeline execution: ${error instanceof Error ? error.message : String(error)}`,
-							traceId,
-							undefined,
-							500,
-							error,
-						);
+			const pipelineError = classifyRunFailure({ error, traceId });
 
 			this.observer.onError({ traceId, error: pipelineError });
 			this.observer.onRunFinish({ traceId, outcome: PIPELINE_STATUS.FAILED, durationMs });
 
-			return { status: PIPELINE_STATUS.FAILED, ctx, error: pipelineError };
-		}
-	}
-
-	private applyContextAdjustment(ctx: C, adjustment: ContextAdjustment<C>, traceId: string): C {
-		switch (adjustment.type) {
-			case "none":
-				return ctx;
-			case "patch":
-				return { ...ctx, ...adjustment.patch };
-			case "override": {
-				const next = adjustment.ctx;
-				// Guard: an override that clears traceId would break observability.
-				// Silently restore it rather than crashing.
-				return next.traceId ? next : { ...next, traceId };
-			}
-			default: {
-				const _exhaustive: never = adjustment;
-				throw new Error(`Unknown context adjustment type: ${JSON.stringify(_exhaustive)}`);
-			}
-		}
-	}
-
-	private async applyTransition(params: {
-		transition: Transition;
-		ctx: C;
-		currentStepName: string;
-		traceId: string;
-		startTime: number;
-		signal?: AbortSignal;
-	}): Promise<
-		{ type: "finish"; result: PipelineRunResult<C> } | { type: "continue"; nextStepName: string }
-	> {
-		const { transition, ctx, currentStepName, traceId, startTime, signal } = params;
-		const durationMs = Date.now() - startTime;
-
-		switch (transition.type) {
-			case TRANSITION_TYPE.NEXT: {
-				const currentIndex = this.stepOrder.indexOf(currentStepName);
-				if (currentIndex === -1 || currentIndex >= this.stepOrder.length - 1) {
-					this.observer.onRunFinish({ traceId, outcome: PIPELINE_STATUS.OK, durationMs });
-					return { type: "finish", result: { status: PIPELINE_STATUS.OK, ctx } };
-				}
-				return { type: "continue", nextStepName: this.stepOrder[currentIndex + 1] };
-			}
-
-			case TRANSITION_TYPE.GOTO: {
-				if (!this.stepsByName.has(transition.stepName)) {
-					throw new PipelineDefinitionError(
-						`GOTO transition to unknown step: "${transition.stepName}"`,
-					);
-				}
-				return { type: "continue", nextStepName: transition.stepName };
-			}
-
-			case TRANSITION_TYPE.RETRY: {
-				const targetStep = transition.stepName ?? currentStepName;
-				if (!this.stepsByName.has(targetStep)) {
-					throw new PipelineDefinitionError(`RETRY transition to unknown step: "${targetStep}"`);
-				}
-				if (transition.delayMs && transition.delayMs > 0) {
-					await new Promise<void>((resolve, reject) => {
-						const timer = setTimeout(resolve, transition.delayMs);
-						signal?.addEventListener(
-							"abort",
-							() => {
-								clearTimeout(timer);
-								reject(
-									signal.reason instanceof Error
-										? signal.reason
-										: new Error("Aborted during retry delay"),
-								);
-							},
-							{ once: true },
-						);
-					});
-				}
-				return { type: "continue", nextStepName: targetStep };
-			}
-
-			case TRANSITION_TYPE.STOP: {
-				this.observer.onRunFinish({ traceId, outcome: PIPELINE_STATUS.OK, durationMs });
-				return { type: "finish", result: { status: PIPELINE_STATUS.OK, ctx } };
-			}
-
-			case TRANSITION_TYPE.FAIL: {
-				const error = new StepExecutionError(
-					transition.error.message,
-					traceId,
-					currentStepName,
-					transition.statusCode,
-					transition.error,
-				);
-				this.observer.onError({ traceId, stepName: currentStepName, error });
-				this.observer.onRunFinish({ traceId, outcome: PIPELINE_STATUS.FAILED, durationMs });
-				return { type: "finish", result: { status: PIPELINE_STATUS.FAILED, ctx, error } };
-			}
-
-			case TRANSITION_TYPE.DEGRADE: {
-				this.observer.onRunFinish({ traceId, outcome: PIPELINE_STATUS.OK, durationMs });
-				return {
-					type: "finish",
-					result: { status: PIPELINE_STATUS.OK, ctx, degraded: { reason: transition.reason } },
-				};
-			}
-
-			default: {
-				const _exhaustive: never = transition;
-				throw new Error(`Unknown transition type: ${JSON.stringify(_exhaustive)}`);
-			}
+			return failedRunResult(ctx, pipelineError);
 		}
 	}
 
@@ -325,15 +222,8 @@ export class PipelineOrchestrator<C extends BaseContext> {
 			return stepResult;
 		} catch (error) {
 			const stepDurationMs = Date.now() - stepStartTime;
-			const caughtError = error instanceof Error ? error : new Error(String(error));
-
-			// Thrown exceptions default to non-retryable: the step must explicitly
-			// return `failed({ retryable: true })` to opt into retry behaviour.
-			const exceptionOutcome: StepOutcome = {
-				type: "failed",
-				error: caughtError,
-				retryable: false,
-			};
+			const caughtError = toError(error);
+			const exceptionOutcome = classifyStepException(caughtError);
 
 			this.observer.onError({ traceId, stepName: step.name, error: caughtError });
 			this.observer.onStepFinish({

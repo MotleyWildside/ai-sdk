@@ -1,12 +1,7 @@
 import { randomUUID } from "crypto";
 import { PromptRegistry } from "./prompts-registry/PromptRegistry";
 import type { PromptDefinition } from "./prompts-registry/types";
-import type {
-	LLMImageUrlContentPart,
-	LLMMessage,
-	LLMProvider,
-	LLMProviderResponse,
-} from "./providers/types";
+import type { LLMMessage, LLMProvider, LLMProviderResponse } from "./providers/types";
 import type { CacheProvider } from "./cache/types";
 import { InMemoryCacheProvider } from "./cache/CacheProvider";
 import type {
@@ -24,7 +19,6 @@ import type {
 	LLMImageResult,
 	LMServiceConfig,
 	ProviderRequest,
-	LLMAttachment,
 	LLMTextRawParams,
 	LLMJsonRawParams,
 	LLMStreamRawParams,
@@ -33,20 +27,24 @@ import type { LLMLogger } from "../logger/types";
 import { CallContext, logOutcome, errorMessage } from "./internal/logContext";
 import { callWithRetries } from "./internal/retry";
 import { buildCacheKey } from "./internal/cacheKey";
-import { selectProvider } from "./internal/providerSelection";
+import { selectProviderForOperation, type ProviderOperation } from "./internal/providerSelection";
 import { parseAndRepairJSON, validateSchema, enforceJsonInstruction } from "./internal/jsonHelpers";
-import { LLMPermanentError } from "./errors";
+import {
+	attachToUserMessage,
+	materializeRawPrompt,
+	materializeRegisteredPrompt,
+	messagesToText,
+	type MaterializedRawPrompt,
+	type MaterializedRegisteredPrompt,
+} from "./internal/promptMaterialization";
 
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Widely-accepted balanced default; each provider's own default varies (OpenAI/Anthropic: 1.0).
 const DEFAULT_TEMPERATURE = 0.7;
 
-type ResolvedPrompt = {
-	prompt: PromptDefinition;
-	model: string;
-	provider: LLMProvider;
-};
+type ResolvedPrompt = MaterializedRegisteredPrompt & { provider: LLMProvider };
+type ResolvedRawPrompt = MaterializedRawPrompt & { provider: LLMProvider };
 
 type Messages = LLMMessage[];
 
@@ -170,7 +168,7 @@ export class LMService {
 	 */
 	async callStream(params: LLMStreamParams): Promise<LLMStreamResult> {
 		const traceId = params.traceId || this.generateTraceId();
-		const { prompt, model, provider } = this.resolveCall(params);
+		const { prompt, model, provider, messages: rawMessages } = this.resolveCall(params, "stream");
 
 		const ctx: CallContext = {
 			traceId,
@@ -180,10 +178,7 @@ export class LMService {
 			providerName: provider.name,
 			startedAt: Date.now(),
 		};
-		const messages = this.attachToUserMessage(
-			PromptRegistry.buildMessages(prompt, params.variables),
-			params.attachments,
-		);
+		const messages = attachToUserMessage(rawMessages, params.attachments);
 		const providerRequest = this.buildProviderRequest(params, prompt, model, messages, "text");
 
 		try {
@@ -224,7 +219,7 @@ export class LMService {
 	 */
 	async callStreamRaw(params: LLMStreamRawParams): Promise<LLMStreamResult> {
 		const traceId = params.traceId || this.generateTraceId();
-		const { messages: rawMessages, model, provider } = this.resolveRaw(params);
+		const { messages: rawMessages, model, provider } = this.resolveRaw(params, "stream");
 
 		const ctx: CallContext = {
 			traceId,
@@ -232,7 +227,7 @@ export class LMService {
 			providerName: provider.name,
 			startedAt: Date.now(),
 		};
-		const messages = this.attachToUserMessage(rawMessages, params.attachments);
+		const messages = attachToUserMessage(rawMessages, params.attachments);
 		const providerRequest = this.buildRawProviderRequest(params, model, messages, "text");
 
 		try {
@@ -272,6 +267,7 @@ export class LMService {
 		return this.executeEmbedOp(
 			params.model,
 			params.traceId,
+			"embed",
 			(provider) =>
 				provider.embed({
 					text: params.text,
@@ -295,6 +291,7 @@ export class LMService {
 		return this.executeEmbedOp(
 			params.model,
 			params.traceId,
+			"embedBatch",
 			(provider) =>
 				provider.embedBatch({
 					texts: params.texts,
@@ -324,29 +321,24 @@ export class LMService {
 		let promptVersion: string | number | undefined;
 
 		if ("promptId" in params) {
-			const def = this.promptReg.getPrompt(params.promptId, params.promptVersion);
-			if (!def) {
-				throw new Error(`Prompt not found: ${params.promptId}@${params.promptVersion ?? "latest"}`);
-			}
-			model = params.model || def.modelDefaults.model || this.config.defaultModel || "";
-			if (!model) {
-				throw new Error(
-					`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or LMServiceConfig.defaultModel`,
-				);
-			}
-			const messages = PromptRegistry.buildMessages(def, params.variables);
-			prompt = messages
-				.map((m) => (typeof m.content === "string" ? m.content : ""))
-				.filter(Boolean)
-				.join("\n\n");
+			const materialized = materializeRegisteredPrompt(
+				this.promptReg,
+				params,
+				this.config.defaultModel,
+			);
+			model = materialized.model;
+			prompt = messagesToText(materialized.messages);
 			promptId = params.promptId;
-			promptVersion = def.version;
+			promptVersion = materialized.prompt.version;
 		} else {
 			prompt = params.prompt;
 			model = params.model;
 		}
 
-		const provider = selectProvider(this.providers, model, this.config, this.logger);
+		const provider = selectProviderForOperation(this.providers, model, this.config, this.logger, {
+			operation: "image",
+			promptId,
+		});
 		const ctx: CallContext = {
 			traceId,
 			model,
@@ -354,14 +346,6 @@ export class LMService {
 			startedAt: Date.now(),
 			...(promptId !== undefined ? { promptId, promptVersion } : {}),
 		};
-
-		if (!provider.generateImage) {
-			throw new LLMPermanentError({
-				message: `Provider ${provider.name} does not support image generation`,
-				provider: provider.name,
-				model,
-			});
-		}
 
 		try {
 			const response = await callWithRetries(
@@ -420,7 +404,7 @@ export class LMService {
 			) => TResult;
 		},
 	): Promise<TResult> {
-		const { prompt, model, provider } = this.resolveCall(params);
+		const { prompt, model, provider, messages: rawMessages } = this.resolveCall(params, "text");
 		options.validatePrompt?.(prompt);
 
 		const traceId = params.traceId || this.generateTraceId();
@@ -447,11 +431,10 @@ export class LMService {
 			}
 		}
 
-		const rawMessages = PromptRegistry.buildMessages(prompt, params.variables);
 		const preparedMessages = options.prepareMessages
 			? options.prepareMessages(rawMessages)
 			: rawMessages;
-		const messages = this.attachToUserMessage(preparedMessages, params.attachments);
+		const messages = attachToUserMessage(preparedMessages, params.attachments);
 
 		const providerRequest = this.buildProviderRequest(
 			params,
@@ -518,7 +501,7 @@ export class LMService {
 			) => TResult;
 		},
 	): Promise<TResult> {
-		const { messages: rawMessages, model, provider } = this.resolveRaw(params);
+		const { messages: rawMessages, model, provider } = this.resolveRaw(params, "text");
 
 		const traceId = params.traceId || this.generateTraceId();
 		const ctx: CallContext = {
@@ -531,7 +514,7 @@ export class LMService {
 		const preparedMessages = options.prepareMessages
 			? options.prepareMessages(rawMessages)
 			: rawMessages;
-		const messages = this.attachToUserMessage(preparedMessages, params.attachments);
+		const messages = attachToUserMessage(preparedMessages, params.attachments);
 		const providerRequest = this.buildRawProviderRequest(
 			params,
 			model,
@@ -573,10 +556,13 @@ export class LMService {
 	private async executeEmbedOp<TResp, TOut>(
 		model: string,
 		traceIdParam: string | undefined,
+		operation: "embed" | "embedBatch",
 		run: (provider: LLMProvider) => Promise<TResp>,
 		toResult: (response: TResp) => TOut,
 	): Promise<TOut> {
-		const provider = selectProvider(this.providers, model, this.config, this.logger);
+		const provider = selectProviderForOperation(this.providers, model, this.config, this.logger, {
+			operation,
+		});
 		const ctx: CallContext = {
 			traceId: traceIdParam || this.generateTraceId(),
 			model,
@@ -603,60 +589,48 @@ export class LMService {
 	 * Resolve prompt, model, and provider — shared by all call* methods.
 	 * Throws early with a clear message if the prompt does not exist or no model can be resolved.
 	 */
-	private resolveCall(params: LLMTextParams): ResolvedPrompt {
-		const prompt = this.promptReg.getPrompt(params.promptId, params.promptVersion);
-
-		if (!prompt) {
-			throw new Error(`Prompt not found: ${params.promptId}@${params.promptVersion ?? "latest"}`);
-		}
-
-		const model = params.model || prompt.modelDefaults.model || this.config.defaultModel || "";
-
-		if (!model) {
-			throw new Error(
-				`No model resolved for prompt "${params.promptId}" — set params.model, prompt.modelDefaults.model, or LMServiceConfig.defaultModel`,
-			);
-		}
-
-		const provider = selectProvider(this.providers, model, this.config, this.logger);
-		if (
-			params.attachments?.length &&
-			provider.supportsAttachments?.(params.attachments, model) !== true
-		) {
-			throw new LLMPermanentError({
-				message: `Provider ${provider.name} does not support attachments for model ${model}`,
-				provider: provider.name,
-				model,
+	private resolveCall(
+		params: LLMTextParams,
+		operation: Extract<ProviderOperation, "text" | "stream">,
+	): ResolvedPrompt {
+		const materialized = materializeRegisteredPrompt(
+			this.promptReg,
+			params,
+			this.config.defaultModel,
+		);
+		const provider = selectProviderForOperation(
+			this.providers,
+			materialized.model,
+			this.config,
+			this.logger,
+			{
+				operation,
+				attachments: params.attachments,
 				promptId: params.promptId,
-			});
-		}
-		return { prompt, model, provider };
+			},
+		);
+		return { ...materialized, provider };
 	}
 
 	/**
 	 * Resolve messages, model, and provider for a raw (registry-free) call.
 	 */
-	private resolveRaw(params: LLMTextRawParams): {
-		messages: LLMMessage[];
-		model: string;
-		provider: LLMProvider;
-	} {
-		const messages: LLMMessage[] = [];
-		if (params.systemPrompt) messages.push({ role: "system", content: params.systemPrompt });
-		messages.push({ role: "user", content: params.userPrompt });
-		const { model } = params;
-		const provider = selectProvider(this.providers, model, this.config, this.logger);
-		if (
-			params.attachments?.length &&
-			provider.supportsAttachments?.(params.attachments, model) !== true
-		) {
-			throw new LLMPermanentError({
-				message: `Provider ${provider.name} does not support attachments for model ${model}`,
-				provider: provider.name,
-				model,
-			});
-		}
-		return { messages, model, provider };
+	private resolveRaw(
+		params: LLMTextRawParams,
+		operation: Extract<ProviderOperation, "text" | "stream">,
+	): ResolvedRawPrompt {
+		const materialized = materializeRawPrompt(params);
+		const provider = selectProviderForOperation(
+			this.providers,
+			materialized.model,
+			this.config,
+			this.logger,
+			{
+				operation,
+				attachments: params.attachments,
+			},
+		);
+		return { ...materialized, provider };
 	}
 
 	/**
@@ -735,38 +709,5 @@ export class LMService {
 
 	private generateTraceId(): string {
 		return randomUUID();
-	}
-
-	private attachToUserMessage(messages: Messages, attachments?: LLMAttachment[]): Messages {
-		if (!attachments?.length) return messages;
-
-		const lastUserIndex = messages.findLastIndex((message) => message.role === "user");
-		if (lastUserIndex === -1) {
-			throw new Error("Attachments require at least one user prompt message");
-		}
-
-		return messages.map((message, index) => {
-			if (index !== lastUserIndex) return message;
-
-			const textParts =
-				typeof message.content === "string"
-					? [{ type: "text" as const, text: message.content }]
-					: message.content;
-
-			return {
-				...message,
-				content: [...textParts, ...this.normalizeAttachments(attachments)],
-			};
-		});
-	}
-
-	private normalizeAttachments(attachments: LLMAttachment[]): LLMImageUrlContentPart[] {
-		return attachments.map((attachment) => ({
-			type: "image_url",
-			image_url: {
-				url: attachment.url,
-				...(attachment.detail ? { detail: attachment.detail } : {}),
-			},
-		}));
 	}
 }

@@ -1,6 +1,15 @@
 import type { LLMProvider } from "../providers/types";
-import type { LMServiceConfig } from "../types";
+import type { LLMAttachment, LMServiceConfig } from "../types";
 import type { LLMLogger } from "../../logger/types";
+import { LLMPermanentError } from "../errors";
+
+export type ProviderOperation = "text" | "stream" | "embed" | "embedBatch" | "image";
+
+export type ProviderOperationOptions = {
+	operation: ProviderOperation;
+	attachments?: LLMAttachment[];
+	promptId?: string;
+};
 
 /**
  * Resolve a provider for a given model.
@@ -48,4 +57,95 @@ export function selectProvider(
 	);
 
 	return firstProvider;
+}
+
+/**
+ * Resolve a provider and assert the operation-specific capability needed before
+ * building the provider request.
+ */
+export function selectProviderForOperation(
+	providers: Map<string, LLMProvider>,
+	model: string,
+	config: LMServiceConfig,
+	logger: LLMLogger | null,
+	options: ProviderOperationOptions,
+): LLMProvider {
+	const provider = selectProvider(providers, model, config, logger);
+	assertProviderCapability(provider, model, options);
+	return provider;
+}
+
+export function assertProviderCapability(
+	provider: LLMProvider,
+	model: string,
+	options: ProviderOperationOptions,
+): void {
+	assertAttachmentSupport(provider, model, options.attachments, options.promptId);
+
+	if (options.operation === "embed" && typeof provider.embed !== "function") {
+		throw new LLMPermanentError({
+			message: `Provider ${provider.name} does not support embeddings`,
+			provider: provider.name,
+			model,
+			promptId: options.promptId,
+		});
+	}
+
+	if (options.operation === "embedBatch" && typeof provider.embedBatch !== "function") {
+		throw new LLMPermanentError({
+			message: `Provider ${provider.name} does not support batch embeddings`,
+			provider: provider.name,
+			model,
+			promptId: options.promptId,
+		});
+	}
+
+	if (options.operation === "stream" && typeof provider.callStream !== "function") {
+		throw new LLMPermanentError({
+			message: `Provider ${provider.name} does not support streaming`,
+			provider: provider.name,
+			model,
+			promptId: options.promptId,
+		});
+	}
+
+	if (options.operation === "image" && typeof provider.generateImage !== "function") {
+		throw new LLMPermanentError({
+			message: `Provider ${provider.name} does not support image generation`,
+			provider: provider.name,
+			model,
+			promptId: options.promptId,
+		});
+	}
+
+	if (
+		options.operation === "image" &&
+		provider.supportsImageGeneration &&
+		!provider.supportsImageGeneration(model)
+	) {
+		throw new LLMPermanentError({
+			message: `Provider ${provider.name} does not support image generation for model ${model}`,
+			provider: provider.name,
+			model,
+			promptId: options.promptId,
+		});
+	}
+}
+
+function assertAttachmentSupport(
+	provider: LLMProvider,
+	model: string,
+	attachments: LLMAttachment[] | undefined,
+	promptId: string | undefined,
+): void {
+	if (!attachments?.length) return;
+
+	if (provider.supportsAttachments?.(attachments, model) === true) return;
+
+	throw new LLMPermanentError({
+		message: `Provider ${provider.name} does not support attachments for model ${model}`,
+		provider: provider.name,
+		model,
+		promptId,
+	});
 }
