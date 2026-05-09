@@ -94,20 +94,12 @@ export class GeminiProvider
 				},
 			});
 
-			const wrapError = (e: unknown) => this.wrapError(e, request.model);
 			return {
-				stream: (async function* () {
-					let fullText = "";
-					try {
-						for await (const chunk of stream) {
-							const delta = chunk.text ?? "";
-							fullText += delta;
-							yield { text: fullText, delta };
-						}
-					} catch (error) {
-						throw wrapError(error);
-					}
-				})(),
+				stream: this.streamTextDeltas(
+					stream,
+					(chunk) => chunk.text ?? "",
+					(error) => this.wrapError(error, request.model),
+				),
 			};
 		} catch (error) {
 			throw this.wrapError(error, request.model);
@@ -345,13 +337,6 @@ export class GeminiProvider
 			return this.permanentError(`Gemini API error: ${message}`, model, status, error);
 		}
 
-		const message = error instanceof Error ? error.message : String(error);
-		const cause = error instanceof Error ? error : new Error(String(error));
-		return new LLMError({
-			message: `Gemini API error: ${message}`,
-			provider: this.name,
-			model,
-			cause,
-		});
+		return this.unknownError(error, model, "Gemini API error");
 	}
 }

@@ -91,20 +91,12 @@ export class OpenAIProvider
 				signal: request.signal,
 			});
 
-			const wrapError = (e: unknown) => this.wrapError(e, request.model);
 			return {
-				stream: (async function* () {
-					let fullText = "";
-					try {
-						for await (const part of stream) {
-							const delta = part.choices[0]?.delta?.content || "";
-							fullText += delta;
-							yield { text: fullText, delta };
-						}
-					} catch (error) {
-						throw wrapError(error);
-					}
-				})(),
+				stream: this.streamTextDeltas(
+					stream,
+					(part) => part.choices[0]?.delta?.content || "",
+					(error) => this.wrapError(error, request.model),
+				),
 			};
 		} catch (error) {
 			// Reuse error handling logic from call() if possible, or just wrap
@@ -130,12 +122,7 @@ export class OpenAIProvider
 
 		if (error instanceof LLMError) return error;
 
-		return new LLMError({
-			message: error instanceof Error ? error.message : "Unknown error",
-			provider: this.name,
-			model,
-			cause: error instanceof Error ? error : new Error(String(error)),
-		});
+		return this.unknownError(error, model);
 	}
 
 	/**
@@ -245,9 +232,6 @@ export class OpenAIProvider
 	}
 
 	override supportsAttachments(attachments: ProviderImageUrlAttachment[], model: string): boolean {
-		return (
-			this.supportsModel(model) &&
-			attachments.every((attachment) => attachment.type === "image_url")
-		);
+		return this.supportsImageUrlAttachments(attachments, model);
 	}
 }

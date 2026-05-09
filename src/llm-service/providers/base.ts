@@ -1,4 +1,4 @@
-import { LLMPermanentError, LLMTransientError } from "../errors";
+import { LLMError, LLMPermanentError, LLMTransientError } from "../errors";
 import {
 	aspectRatioToDimensions as aspectRatioToImageDimensions,
 	downloadGeneratedImage,
@@ -63,6 +63,16 @@ export abstract class BaseLLMProvider implements ProviderIdentity {
 		return false;
 	}
 
+	protected supportsImageUrlAttachments(
+		attachments: ProviderImageUrlAttachment[],
+		model: string,
+	): boolean {
+		return (
+			this.supportsModel(model) &&
+			attachments.every((attachment) => attachment.type === "image_url")
+		);
+	}
+
 	protected supportsModelPrefix(model: string): boolean {
 		const normalizedModel = model.toLowerCase();
 		return this.supportedModelPrefixes.some((prefix) =>
@@ -102,6 +112,35 @@ export abstract class BaseLLMProvider implements ProviderIdentity {
 			statusCode,
 			cause,
 		});
+	}
+
+	protected unknownError(error: unknown, model: string, prefix?: string): LLMError {
+		const message = error instanceof Error ? error.message : "Unknown error";
+		return new LLMError({
+			message: prefix ? `${prefix}: ${message}` : message,
+			provider: this.name,
+			model,
+			cause: error instanceof Error ? error : new Error(String(error)),
+		});
+	}
+
+	protected streamTextDeltas<T>(
+		source: AsyncIterable<T>,
+		getDelta: (part: T) => string,
+		wrapError: (error: unknown) => Error,
+	): LLMProviderStreamResponse["stream"] {
+		return (async function* () {
+			let fullText = "";
+			try {
+				for await (const part of source) {
+					const delta = getDelta(part);
+					fullText += delta;
+					yield { text: fullText, delta };
+				}
+			} catch (error) {
+				throw wrapError(error);
+			}
+		})();
 	}
 
 	protected async readJsonResponse<T>(response: Response, model: string): Promise<T> {
