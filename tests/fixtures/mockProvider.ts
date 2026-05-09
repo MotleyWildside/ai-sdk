@@ -10,6 +10,10 @@ import type {
 	LLMProviderEmbedBatchResponse,
 	LLMProviderImageRequest,
 	LLMProviderImageResponse,
+	LLMEmbeddingProvider,
+	LLMImageProvider,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "../../src/llm-service/providers/types";
 
 export type MockProviderOptions = {
@@ -25,14 +29,14 @@ export type MockProviderOptions = {
 };
 
 type MockProvider = LLMProvider & {
-	call: Mock<LLMProvider["call"]>;
-	callStream: Mock<LLMProvider["callStream"]>;
-	embed: Mock<LLMProvider["embed"]>;
-	embedBatch: Mock<LLMProvider["embedBatch"]>;
+	call: Mock<LLMTextProvider["call"]>;
+	callStream: Mock<LLMStreamingProvider["callStream"]>;
+	embed: Mock<LLMEmbeddingProvider["embed"]>;
+	embedBatch: Mock<LLMEmbeddingProvider["embedBatch"]>;
 	supportsModel: Mock<LLMProvider["supportsModel"]>;
 	supportsAttachments: Mock<NonNullable<LLMProvider["supportsAttachments"]>>;
 	supportsImageGeneration: Mock<NonNullable<LLMProvider["supportsImageGeneration"]>>;
-	generateImage: Mock<NonNullable<LLMProvider["generateImage"]>>;
+	generateImage: Mock<LLMImageProvider["generateImage"]>;
 };
 
 export function makeMockProvider(options: MockProviderOptions = {}): MockProvider {
@@ -80,16 +84,18 @@ export function makeMockProvider(options: MockProviderOptions = {}): MockProvide
 
 	const provider: MockProvider = {
 		name,
-		call: vi.fn<LLMProvider["call"]>(options.callImpl ?? defaultCallImpl),
-		callStream: vi.fn<LLMProvider["callStream"]>(options.streamImpl ?? defaultStreamImpl),
-		embed: vi.fn<LLMProvider["embed"]>(options.embedImpl ?? defaultEmbedImpl),
-		embedBatch: vi.fn<LLMProvider["embedBatch"]>(options.embedBatchImpl ?? defaultEmbedBatchImpl),
+		call: vi.fn<LLMTextProvider["call"]>(options.callImpl ?? defaultCallImpl),
+		callStream: vi.fn<LLMStreamingProvider["callStream"]>(options.streamImpl ?? defaultStreamImpl),
+		embed: vi.fn<LLMEmbeddingProvider["embed"]>(options.embedImpl ?? defaultEmbedImpl),
+		embedBatch: vi.fn<LLMEmbeddingProvider["embedBatch"]>(
+			options.embedBatchImpl ?? defaultEmbedBatchImpl,
+		),
 		supportsModel: vi.fn<LLMProvider["supportsModel"]>(supportsFn),
 		supportsAttachments:
 			vi.fn<NonNullable<LLMProvider["supportsAttachments"]>>(supportsAttachmentsFn),
 		supportsImageGeneration:
 			vi.fn<NonNullable<LLMProvider["supportsImageGeneration"]>>(supportsImageGenerationFn),
-		generateImage: vi.fn<NonNullable<LLMProvider["generateImage"]>>(
+		generateImage: vi.fn<LLMImageProvider["generateImage"]>(
 			options.generateImageImpl ?? defaultGenerateImageImpl,
 		),
 	};

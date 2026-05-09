@@ -1,8 +1,9 @@
 import { GoogleGenAI, ApiError, PersonGeneration } from "@google/genai";
 import type { Content, Part } from "@google/genai";
-import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
+import { LLMError } from "../errors";
 import type {
-	LLMProvider,
+	LLMEmbeddingProvider,
+	LLMImageProvider,
 	LLMProviderRequest,
 	LLMProviderResponse,
 	LLMProviderStreamResponse,
@@ -13,18 +14,32 @@ import type {
 	LLMProviderImageRequest,
 	LLMProviderImageResponse,
 	LLMMessage,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "./types";
+import { BaseLLMProvider } from "./base";
 
-export class GeminiProvider implements LLMProvider {
+export class GeminiProvider
+	extends BaseLLMProvider
+	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider, LLMImageProvider
+{
 	readonly name = "gemini";
 
 	private static readonly IMAGEN_PREFIX = "imagen-";
 	private static readonly NANO_BANANA_PATTERN = /^gemini-.*-image(-preview)?$/i;
 	private static readonly VISION_PATTERN = /^gemini-(1\.5|2\.|3)/i;
+	protected readonly supportedModelPrefixes = [
+		"gemini-",
+		"learnlm-",
+		"gemini-embedding-",
+		"text-embedding-",
+		GeminiProvider.IMAGEN_PREFIX,
+	];
 
 	private ai: GoogleGenAI;
 
 	constructor(apiKey: string) {
+		super();
 		this.ai = new GoogleGenAI({ apiKey });
 	}
 
@@ -148,28 +163,16 @@ export class GeminiProvider implements LLMProvider {
 			if (this.isNanoBananaModel(request.model)) {
 				return this.generateViaGemini(request);
 			}
-			throw new LLMPermanentError({
-				message: `Model ${request.model} is not an image-generation model. Use an imagen-* or gemini-*-image model.`,
-				provider: "gemini",
-				model: request.model,
-			});
+			throw this.permanentError(
+				`Model ${request.model} is not an image-generation model. Use an imagen-* or gemini-*-image model.`,
+				request.model,
+			);
 		} catch (error) {
 			throw this.wrapError(error, request.model);
 		}
 	}
 
-	supportsModel(model: string): boolean {
-		const lower = model.toLowerCase();
-		return (
-			lower.startsWith("gemini-") ||
-			lower.startsWith("learnlm-") ||
-			lower.startsWith("gemini-embedding-") ||
-			lower.startsWith("text-embedding-") ||
-			lower.startsWith(GeminiProvider.IMAGEN_PREFIX)
-		);
-	}
-
-	supportsAttachments(
+	override supportsAttachments(
 		_attachments: Array<{ type: "image_url"; url: string }>,
 		model: string,
 	): boolean {
@@ -337,28 +340,16 @@ export class GeminiProvider implements LLMProvider {
 		if (error instanceof ApiError) {
 			const { status, message } = error;
 			if (status === 429 || status >= 500) {
-				return new LLMTransientError({
-					message: `Gemini API transient error: ${message}`,
-					provider: "gemini",
-					model,
-					statusCode: status,
-					cause: error,
-				});
+				return this.transientError(`Gemini API transient error: ${message}`, model, status, error);
 			}
-			return new LLMPermanentError({
-				message: `Gemini API error: ${message}`,
-				provider: "gemini",
-				model,
-				statusCode: status,
-				cause: error,
-			});
+			return this.permanentError(`Gemini API error: ${message}`, model, status, error);
 		}
 
 		const message = error instanceof Error ? error.message : String(error);
 		const cause = error instanceof Error ? error : new Error(String(error));
 		return new LLMError({
 			message: `Gemini API error: ${message}`,
-			provider: "gemini",
+			provider: this.name,
 			model,
 			cause,
 		});

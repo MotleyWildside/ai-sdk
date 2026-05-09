@@ -4,9 +4,10 @@ When you write integration tests for code that calls `LMService`, you want fully
 
 ## Concepts covered
 
-- Implementing `LLMProvider` as a scriptable test double
+- Implementing only the provider capabilities the mock supports
+- Reusing `BaseLLMProvider` for model support defaults and provider error helpers
 - Queueing deterministic `LLMProviderResponse` values with `queue()`
-- Recording all `ProviderRequest` arguments in `calls[]` for post-call assertions
+- Recording all `LLMProviderRequest` arguments in `calls[]` for post-call assertions
 - Streaming queued text character-by-character via `callStream()`
 - Injecting transient failures before a success with `simulateTransientError(n)`
 - Returning zero-vectors for `embed()` / `embedBatch()` with configurable dimensions
@@ -16,135 +17,138 @@ When you write integration tests for code that calls `LMService`, you want fully
 
 ```typescript
 import type {
-  LLMProvider,
-  ProviderRequest,
-  LLMProviderResponse,
-  LLMProviderStreamResponse,
-  LLMEmbedRequest,
-  LLMEmbedResponse,
-  LLMEmbedBatchRequest,
-  LLMEmbedBatchResponse,
+	LLMEmbeddingProvider,
+	LLMStreamingProvider,
+	LLMTextProvider,
+	LLMProviderRequest,
+	LLMProviderResponse,
+	LLMProviderStreamResponse,
+	LLMProviderEmbedRequest,
+	LLMProviderEmbedResponse,
+	LLMProviderEmbedBatchRequest,
+	LLMProviderEmbedBatchResponse,
 } from "@motleywildside/ai-sdk";
-import { LLMTransientError } from "@motleywildside/ai-sdk";
+import { BaseLLMProvider, LLMTransientError } from "@motleywildside/ai-sdk";
 
-export class MockLLMProvider implements LLMProvider {
-  readonly name = "mock";
+export class MockLLMProvider
+	extends BaseLLMProvider
+	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider
+{
+	readonly name = "mock";
+	protected readonly supportedModelPrefixes = [""];
 
-  // Every call is recorded here for post-call assertions
-  calls: ProviderRequest[] = [];
+	// Every call is recorded here for post-call assertions
+	calls: LLMProviderRequest[] = [];
 
-  // Embed calls are recorded separately so tests can assert on them independently
-  embedCalls: LLMEmbedRequest[] = [];
+	// Embed calls are recorded separately so tests can assert on them independently
+	embedCalls: LLMProviderEmbedRequest[] = [];
 
-  private responseQueue: LLMProviderResponse[] = [];
-  private transientErrorsRemaining = 0;
-  private embeddingDimensions: number;
+	private responseQueue: LLMProviderResponse[] = [];
+	private transientErrorsRemaining = 0;
+	private embeddingDimensions: number;
 
-  constructor({ embeddingDimensions = 1536 }: { embeddingDimensions?: number } = {}) {
-    this.embeddingDimensions = embeddingDimensions;
-  }
+	constructor({ embeddingDimensions = 1536 }: { embeddingDimensions?: number } = {}) {
+		super();
+		this.embeddingDimensions = embeddingDimensions;
+	}
 
-  // Script the next N responses. Calls dequeue in FIFO order.
-  queue(responses: Partial<LLMProviderResponse>[]): this {
-    for (const r of responses) {
-      this.responseQueue.push({
-        text: r.text ?? "",
-        usage: r.usage ?? { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
-        finishReason: r.finishReason ?? "stop",
-        requestId: r.requestId,
-      });
-    }
-    return this;
-  }
+	// Script the next N responses. Calls dequeue in FIFO order.
+	queue(responses: Partial<LLMProviderResponse>[]): this {
+		for (const r of responses) {
+			this.responseQueue.push({
+				text: r.text ?? "",
+				usage: r.usage ?? { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
+				finishReason: r.finishReason ?? "stop",
+				requestId: r.requestId,
+			});
+		}
+		return this;
+	}
 
-  // Make the next `n` calls fail with LLMTransientError before succeeding.
-  // Useful for testing retry logic in LMService.
-  simulateTransientError(n: number): this {
-    this.transientErrorsRemaining = n;
-    return this;
-  }
+	// Make the next `n` calls fail with LLMTransientError before succeeding.
+	// Useful for testing retry logic in LMService.
+	simulateTransientError(n: number): this {
+		this.transientErrorsRemaining = n;
+		return this;
+	}
 
-  // Reset all state between tests
-  reset(): this {
-    this.calls = [];
-    this.embedCalls = [];
-    this.responseQueue = [];
-    this.transientErrorsRemaining = 0;
-    return this;
-  }
+	// Reset all state between tests
+	reset(): this {
+		this.calls = [];
+		this.embedCalls = [];
+		this.responseQueue = [];
+		this.transientErrorsRemaining = 0;
+		return this;
+	}
 
-  supportsModel(_model: string): boolean {
-    // The mock handles every model so the service never falls back to a real provider
-    return true;
-  }
+	async call(request: LLMProviderRequest): Promise<LLMProviderResponse> {
+		this.calls.push(request);
 
-  async call(request: ProviderRequest): Promise<LLMProviderResponse> {
-    this.calls.push(request);
+		if (this.transientErrorsRemaining > 0) {
+			this.transientErrorsRemaining--;
+			throw new LLMTransientError({
+				message: "Simulated transient error",
+				provider: this.name,
+				model: request.model,
+				statusCode: 429,
+			});
+		}
 
-    if (this.transientErrorsRemaining > 0) {
-      this.transientErrorsRemaining--;
-      throw new LLMTransientError("Simulated transient error", {
-        provider: this.name,
-        model: request.model,
-        statusCode: 429,
-      });
-    }
+		const next = this.responseQueue.shift();
+		if (!next) {
+			throw new Error(
+				`MockLLMProvider: call() invoked but the response queue is empty. ` +
+					`Did you forget to call mock.queue([...])?`,
+			);
+		}
 
-    const next = this.responseQueue.shift();
-    if (!next) {
-      throw new Error(
-        `MockLLMProvider: call() invoked but the response queue is empty. ` +
-          `Did you forget to call mock.queue([...])?`,
-      );
-    }
+		return next;
+	}
 
-    return next;
-  }
+	async callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse> {
+		this.calls.push(request);
 
-  async callStream(request: ProviderRequest): Promise<LLMProviderStreamResponse> {
-    this.calls.push(request);
+		const next = this.responseQueue.shift();
+		if (!next) {
+			throw new Error(`MockLLMProvider: callStream() invoked but the response queue is empty.`);
+		}
 
-    const next = this.responseQueue.shift();
-    if (!next) {
-      throw new Error(`MockLLMProvider: callStream() invoked but the response queue is empty.`);
-    }
+		const fullText = next.text;
+		let accumulatedText = "";
 
-    const fullText = next.text;
-    let accumulatedText = "";
+		// Stream the queued text character by character
+		const stream: AsyncIterable<{ text: string; delta: string }> = {
+			[Symbol.asyncIterator]() {
+				return (async function* () {
+					for (const char of fullText) {
+						accumulatedText += char;
+						yield { text: accumulatedText, delta: char };
+					}
+				})();
+			},
+		};
 
-    // Stream the queued text character by character
-    const stream: AsyncIterable<{ text: string; delta: string }> = {
-      [Symbol.asyncIterator]() {
-        return (async function* () {
-          for (const char of fullText) {
-            accumulatedText += char;
-            yield { text: accumulatedText, delta: char };
-          }
-        })();
-      },
-    };
+		return { stream };
+	}
 
-    return { stream };
-  }
+	async embed(request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> {
+		this.embedCalls.push(request);
+		return {
+			embedding: new Array(this.embeddingDimensions).fill(0),
+			usage: { totalTokens: 5 },
+		};
+	}
 
-  async embed(request: LLMEmbedRequest): Promise<LLMEmbedResponse> {
-    this.embedCalls.push(request);
-    return {
-      embedding: new Array(this.embeddingDimensions).fill(0),
-      usage: { totalTokens: 5 },
-    };
-  }
-
-  async embedBatch(request: LLMEmbedBatchRequest): Promise<LLMEmbedBatchResponse> {
-    // Record as individual embed calls so assertions stay simple
-    for (const text of request.texts) {
-      this.embedCalls.push({ ...request, text });
-    }
-    return {
-      embeddings: request.texts.map(() => new Array(this.embeddingDimensions).fill(0)),
-      usage: { totalTokens: request.texts.length * 5 },
-    };
-  }
+	async embedBatch(request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> {
+		// Record as individual embed calls so assertions stay simple
+		for (const text of request.texts) {
+			this.embedCalls.push({ ...request, text });
+		}
+		return {
+			embeddings: request.texts.map(() => new Array(this.embeddingDimensions).fill(0)),
+			usage: { totalTokens: request.texts.length * 5 },
+		};
+	}
 }
 ```
 
@@ -158,45 +162,45 @@ import { LMService, PromptRegistry } from "@motleywildside/ai-sdk";
 import { MockLLMProvider } from "./MockLLMProvider";
 
 describe("summarise pipeline", () => {
-  let mock: MockLLMProvider;
-  let llm: LMService;
+	let mock: MockLLMProvider;
+	let llm: LMService;
 
-  beforeEach(() => {
-    const registry = new PromptRegistry();
-    registry.register({
-      promptId: "summarize",
-      version: 1,
-      systemPrompt: "You are a concise summarizer.",
-      userPrompt: "Summarize: {text}",
-      modelDefaults: { model: "mock-model", temperature: 0 },
-      output: { type: "text" },
-    });
+	beforeEach(() => {
+		const registry = new PromptRegistry();
+		registry.register({
+			promptId: "summarize",
+			version: 1,
+			systemPrompt: "You are a concise summarizer.",
+			userPrompt: "Summarize: {text}",
+			modelDefaults: { model: "mock-model", temperature: 0 },
+			output: { type: "text" },
+		});
 
-    mock = new MockLLMProvider();
-    llm = new LMService({ providers: [mock], promptRegistry: registry });
-  });
+		mock = new MockLLMProvider();
+		llm = new LMService({ providers: [mock], promptRegistry: registry });
+	});
 
-  it("sends the interpolated user message to the provider", async () => {
-    mock.queue([{ text: "A short summary." }]);
+	it("sends the interpolated user message to the provider", async () => {
+		mock.queue([{ text: "A short summary." }]);
 
-    await llm.callText({ promptId: "summarize", variables: { text: "A long article..." } });
+		await llm.callText({ promptId: "summarize", variables: { text: "A long article..." } });
 
-    expect(mock.calls).toHaveLength(1);
-    // Verify variable interpolation happened before the provider was called
-    const userMessage = mock.calls[0].messages.find((m) => m.role === "user");
-    expect(userMessage?.content).toBe("Summarize: A long article...");
-  });
+		expect(mock.calls).toHaveLength(1);
+		// Verify variable interpolation happened before the provider was called
+		const userMessage = mock.calls[0].messages.find((m) => m.role === "user");
+		expect(userMessage?.content).toBe("Summarize: A long article...");
+	});
 
-  it("returns the text from the provider response", async () => {
-    mock.queue([{ text: "Summary result." }]);
+	it("returns the text from the provider response", async () => {
+		mock.queue([{ text: "Summary result." }]);
 
-    const result = await llm.callText({
-      promptId: "summarize",
-      variables: { text: "Some text." },
-    });
+		const result = await llm.callText({
+			promptId: "summarize",
+			variables: { text: "Some text." },
+		});
 
-    expect(result.text).toBe("Summary result.");
-  });
+		expect(result.text).toBe("Summary result.");
+	});
 });
 ```
 
@@ -206,36 +210,36 @@ describe("summarise pipeline", () => {
 import { LMService, PromptRegistry, InMemoryCacheProvider } from "@motleywildside/ai-sdk";
 
 it("cache hit skips the provider on the second call", async () => {
-  const registry = new PromptRegistry();
-  registry.register({
-    promptId: "greet",
-    version: 1,
-    userPrompt: "Hello, {name}!",
-    modelDefaults: { model: "mock-model", temperature: 0 },
-    output: { type: "text" },
-  });
+	const registry = new PromptRegistry();
+	registry.register({
+		promptId: "greet",
+		version: 1,
+		userPrompt: "Hello, {name}!",
+		modelDefaults: { model: "mock-model", temperature: 0 },
+		output: { type: "text" },
+	});
 
-  const mock = new MockLLMProvider();
-  // Queue only one response — a second provider call would throw (empty queue)
-  mock.queue([{ text: "Hello, world!" }]);
+	const mock = new MockLLMProvider();
+	// Queue only one response — a second provider call would throw (empty queue)
+	mock.queue([{ text: "Hello, world!" }]);
 
-  const llm = new LMService({
-    providers: [mock],
-    promptRegistry: registry,
-    cacheProvider: new InMemoryCacheProvider(),
-  });
+	const llm = new LMService({
+		providers: [mock],
+		promptRegistry: registry,
+		cacheProvider: new InMemoryCacheProvider(),
+	});
 
-  const params = {
-    promptId: "greet",
-    variables: { name: "world" },
-    cache: { mode: "read_through" as const, ttlSeconds: 60 },
-  };
+	const params = {
+		promptId: "greet",
+		variables: { name: "world" },
+		cache: { mode: "read_through" as const, ttlSeconds: 60 },
+	};
 
-  const first = await llm.callText(params);
-  const second = await llm.callText(params); // served from cache
+	const first = await llm.callText(params);
+	const second = await llm.callText(params); // served from cache
 
-  expect(mock.calls).toHaveLength(1); // provider was called exactly once
-  expect(first.text).toBe(second.text);
+	expect(mock.calls).toHaveLength(1); // provider was called exactly once
+	expect(first.text).toBe(second.text);
 });
 ```
 
@@ -243,32 +247,32 @@ it("cache hit skips the provider on the second call", async () => {
 
 ```typescript
 it("retries on transient errors and eventually succeeds", async () => {
-  const registry = new PromptRegistry();
-  registry.register({
-    promptId: "p",
-    version: 1,
-    userPrompt: "Hello",
-    modelDefaults: { model: "mock-model", temperature: 0 },
-    output: { type: "text" },
-  });
+	const registry = new PromptRegistry();
+	registry.register({
+		promptId: "p",
+		version: 1,
+		userPrompt: "Hello",
+		modelDefaults: { model: "mock-model", temperature: 0 },
+		output: { type: "text" },
+	});
 
-  const mock = new MockLLMProvider();
-  // Fail twice then succeed on the third attempt
-  mock.simulateTransientError(2);
-  mock.queue([{ text: "Success after retries." }]);
+	const mock = new MockLLMProvider();
+	// Fail twice then succeed on the third attempt
+	mock.simulateTransientError(2);
+	mock.queue([{ text: "Success after retries." }]);
 
-  const llm = new LMService({
-    providers: [mock],
-    promptRegistry: registry,
-    maxAttempts: 3,
-    retryBaseDelayMs: 0, // remove delay in tests
-  });
+	const llm = new LMService({
+		providers: [mock],
+		promptRegistry: registry,
+		maxAttempts: 3,
+		retryBaseDelayMs: 0, // remove delay in tests
+	});
 
-  const result = await llm.callText({ promptId: "p", variables: {} });
+	const result = await llm.callText({ promptId: "p", variables: {} });
 
-  expect(result.text).toBe("Success after retries.");
-  // 2 failed attempts + 1 success = 3 total calls
-  expect(mock.calls).toHaveLength(3);
+	expect(result.text).toBe("Success after retries.");
+	// 2 failed attempts + 1 success = 3 total calls
+	expect(mock.calls).toHaveLength(3);
 });
 ```
 

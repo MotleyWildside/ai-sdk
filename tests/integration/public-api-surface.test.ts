@@ -11,6 +11,8 @@ import type {
 	StepOutcomeFailed,
 	StepOutcomeOk,
 	StepOutcomeRedirect,
+	LLMImageProvider,
+	LLMProvider,
 	Transition,
 } from "../../src/index";
 
@@ -25,6 +27,11 @@ type PublicOrchestratorTypeSmoke = {
 	decisionInput: PolicyDecisionInput<BaseContext>;
 	decisionOutput: PolicyDecisionOutput<BaseContext>;
 	policy: PipelinePolicy<BaseContext>;
+};
+
+type PublicProviderTypeSmoke = {
+	anyProvider: LLMProvider;
+	imageProvider: LLMImageProvider;
 };
 
 describe("Public API surface", () => {
@@ -151,5 +158,23 @@ describe("Public API surface", () => {
 
 		expect(typeSmoke.routes.answer).toBe("finalize");
 		expect(typeSmoke.transition.type).toBe("goto");
+	});
+
+	it("API-13: public provider capability types support image-only providers", () => {
+		const imageOnly = {
+			name: "image-only",
+			supportsModel: (model: string) => model.startsWith("image-"),
+			generateImage: async () => ({
+				images: [{ data: "AA==", mimeType: "image/png" }],
+				raw: {},
+			}),
+		} satisfies LLMImageProvider;
+		const typeSmoke: PublicProviderTypeSmoke = {
+			anyProvider: imageOnly,
+			imageProvider: imageOnly,
+		};
+
+		expect(typeSmoke.anyProvider.name).toBe("image-only");
+		expect(typeof typeSmoke.imageProvider.generateImage).toBe("function");
 	});
 });

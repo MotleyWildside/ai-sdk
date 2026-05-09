@@ -1,18 +1,14 @@
 import { OpenRouter } from "@openrouter/sdk";
-import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
+import { LLMError } from "../errors";
 import type {
-	LLMProvider,
 	LLMProviderRequest,
 	LLMProviderResponse,
 	LLMProviderStreamResponse,
-	LLMProviderEmbedRequest,
-	LLMProviderEmbedResponse,
-	LLMProviderEmbedBatchRequest,
-	LLMProviderEmbedBatchResponse,
-	LLMProviderImageRequest,
-	LLMProviderImageResponse,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "./types";
 import type { ChatResponse } from "@openrouter/sdk/models";
+import { BaseLLMProvider, type ProviderImageUrlAttachment } from "./base";
 
 interface OpenRouterErrorLike {
 	name: "OpenRouterError";
@@ -32,13 +28,16 @@ function isOpenRouterError(e: unknown): e is OpenRouterErrorLike {
 /**
  * OpenRouter provider adapter
  */
-export class OpenRouterProvider implements LLMProvider {
+export class OpenRouterProvider
+	extends BaseLLMProvider
+	implements LLMTextProvider, LLMStreamingProvider
+{
 	readonly name = "openrouter";
 
 	/**
 	 * OpenRouter model prefixes that this provider supports
 	 */
-	private readonly supportedModelPrefixes = [
+	protected readonly supportedModelPrefixes = [
 		"anthropic/",
 		"google/",
 		"meta-llama/",
@@ -57,7 +56,9 @@ export class OpenRouterProvider implements LLMProvider {
 
 	private client: OpenRouter | null = null;
 
-	constructor(private apiKey: string) {}
+	constructor(private apiKey: string) {
+		super();
+	}
 
 	private getClient(): OpenRouter {
 		if (!this.client) {
@@ -143,21 +144,18 @@ export class OpenRouterProvider implements LLMProvider {
 				statusCode === 502 ||
 				statusCode === 503 ||
 				statusCode >= 500;
-			const opts = {
-				message: `OpenRouter API error: ${error.message}`,
-				provider: "openrouter",
-				model,
-				statusCode,
-				cause: new Error(error.message),
-			};
-			return isTransient ? new LLMTransientError(opts) : new LLMPermanentError(opts);
+			const cause = new Error(error.message);
+			const message = `OpenRouter API error: ${error.message}`;
+			return isTransient
+				? this.transientError(message, model, statusCode, cause)
+				: this.permanentError(message, model, statusCode, cause);
 		}
 
 		if (error instanceof LLMError) return error;
 
 		return new LLMError({
 			message: error instanceof Error ? error.message : "Unknown error",
-			provider: "openrouter",
+			provider: this.name,
 			model,
 			cause: error instanceof Error ? error : new Error(String(error)),
 		});
@@ -200,7 +198,7 @@ export class OpenRouterProvider implements LLMProvider {
 			if (!content) {
 				throw new LLMError({
 					message: "No response content from OpenRouter",
-					provider: "openrouter",
+					provider: this.name,
 					model: request.model,
 					requestId: completion.id,
 				});
@@ -224,43 +222,10 @@ export class OpenRouterProvider implements LLMProvider {
 		}
 	}
 
-	/**
-	 * Generate vector embedding for text (not supported)
-	 */
-	async embed(_request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse> {
-		throw new Error("Embeddings are not supported by OpenRouter provider");
-	}
-
-	/**
-	 * Generate vector embeddings for multiple texts (not supported)
-	 */
-	async embedBatch(_request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse> {
-		throw new Error("Embeddings are not supported by OpenRouter provider");
-	}
-
-	/**
-	 * Check if this provider supports a given model
-	 */
-	supportsModel(model: string): boolean {
-		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
-	}
-
-	supportsAttachments(
-		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
-		model: string,
-	): boolean {
+	override supportsAttachments(attachments: ProviderImageUrlAttachment[], model: string): boolean {
 		return (
 			this.supportsModel(model) &&
 			attachments.every((attachment) => attachment.type === "image_url")
 		);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	async generateImage(_request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
-		throw new LLMPermanentError({
-			message: "OpenRouterProvider does not support image generation. Use GeminiProvider with an imagen-* or gemini-*-image model.",
-			provider: "openrouter",
-			model: _request.model,
-		});
 	}
 }

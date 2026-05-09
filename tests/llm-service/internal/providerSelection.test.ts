@@ -1,15 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 import {
 	assertProviderCapability,
+	isImageProvider,
+	isTextProvider,
 	selectProvider,
 	selectProviderForOperation,
 } from "../../../src/llm-service/internal/providerSelection";
 import { makeMockProvider } from "../../fixtures/mockProvider";
 import { makeMockLogger } from "../../fixtures/mockLogger";
 import { LLMPermanentError } from "../../../src/llm-service/errors";
+import type { LLMProvider } from "../../../src/llm-service/providers/types";
 
 describe("selectProvider", () => {
-	function makeMap(...providers: ReturnType<typeof makeMockProvider>[]) {
+	function makeMap(...providers: LLMProvider[]) {
 		const m = new Map();
 		for (const p of providers) m.set(p.name, p);
 		return m;
@@ -121,5 +124,122 @@ describe("selectProvider", () => {
 		expect(() => assertProviderCapability(provider, "text-model", { operation: "image" })).toThrow(
 			/does not support image generation for model text-model/,
 		);
+	});
+
+	it("selectProviderForOperation selects a text-only provider for text calls", async () => {
+		const textOnly = {
+			name: "text-only",
+			supportsModel: (model: string) => model === "shared-model",
+			call: vi.fn(async () => ({ text: "ok", raw: {} })),
+		} satisfies LLMProvider;
+		const imageOnly = {
+			name: "image-only",
+			supportsModel: (model: string) => model === "shared-model",
+			generateImage: vi.fn(async () => ({
+				images: [{ data: "AA==", mimeType: "image/png" }],
+				raw: {},
+			})),
+		} satisfies LLMProvider;
+
+		const result = selectProviderForOperation(
+			makeMap(imageOnly, textOnly),
+			"shared-model",
+			{ providers: [imageOnly, textOnly] },
+			null,
+			{ operation: "text" },
+		);
+
+		expect(result.name).toBe("text-only");
+		expect(isTextProvider(result)).toBe(true);
+		expect(await result.call({ messages: [], model: "shared-model" })).toMatchObject({
+			text: "ok",
+		});
+	});
+
+	it("selectProviderForOperation selects an image-only provider for image calls", async () => {
+		const textOnly = {
+			name: "text-only",
+			supportsModel: (model: string) => model === "shared-model",
+			call: vi.fn(async () => ({ text: "ok", raw: {} })),
+		} satisfies LLMProvider;
+		const imageOnly = {
+			name: "image-only",
+			supportsModel: (model: string) => model === "shared-model",
+			generateImage: vi.fn(async () => ({
+				images: [{ data: "AA==", mimeType: "image/png" }],
+				raw: {},
+			})),
+		} satisfies LLMProvider;
+
+		const result = selectProviderForOperation(
+			makeMap(textOnly, imageOnly),
+			"shared-model",
+			{ providers: [textOnly, imageOnly] },
+			null,
+			{ operation: "image" },
+		);
+
+		expect(result.name).toBe("image-only");
+		expect(isImageProvider(result)).toBe(true);
+		expect(await result.generateImage({ prompt: "cat", model: "shared-model" })).toMatchObject({
+			images: [{ mimeType: "image/png" }],
+		});
+	});
+
+	it("selectProviderForOperation rejects image-only providers for text calls", () => {
+		const imageOnly = {
+			name: "image-only",
+			supportsModel: (model: string) => model === "image-model",
+			generateImage: vi.fn(async () => ({
+				images: [{ data: "AA==", mimeType: "image/png" }],
+				raw: {},
+			})),
+		} satisfies LLMProvider;
+
+		expect(() =>
+			selectProviderForOperation(
+				makeMap(imageOnly),
+				"image-model",
+				{ providers: [imageOnly] },
+				null,
+				{ operation: "text" },
+			),
+		).toThrow(/No registered provider supports text generation for model image-model/);
+	});
+
+	it("selectProviderForOperation names missing capability when model match lacks operation", () => {
+		const textOnly = {
+			name: "text-only",
+			supportsModel: (model: string) => model === "shared-model",
+			call: vi.fn(async () => ({ text: "ok", raw: {} })),
+		} satisfies LLMProvider;
+
+		expect(() =>
+			selectProviderForOperation(
+				makeMap(textOnly),
+				"shared-model",
+				{ providers: [textOnly] },
+				null,
+				{ operation: "image" },
+			),
+		).toThrow(/No registered provider supports image generation for model shared-model/);
+	});
+
+	it("selectProviderForOperation treats single and batch embeddings as one capability", () => {
+		const singleOnly = {
+			name: "single-only",
+			supportsModel: (model: string) => model === "embed-model",
+			embed: vi.fn(async () => ({ embedding: [0.1] })),
+		} satisfies LLMProvider;
+
+		expect(() =>
+			selectProviderForOperation(
+				makeMap(singleOnly),
+				"embed-model",
+				{ providers: [singleOnly] },
+				null,
+				{ operation: "embed" },
+			),
+		).toThrow(/No registered provider supports embeddings for model embed-model/);
 	});
 });

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
-import { LLMError, LLMTransientError, LLMPermanentError } from "../errors";
+import { LLMError } from "../errors";
 import type {
-	LLMProvider,
+	LLMEmbeddingProvider,
 	LLMProviderRequest,
 	LLMProviderResponse,
 	LLMProviderStreamResponse,
@@ -9,20 +9,24 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
-	LLMProviderImageRequest,
-	LLMProviderImageResponse,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "./types";
+import { BaseLLMProvider, type ProviderImageUrlAttachment } from "./base";
 
 /**
  * OpenAI provider adapter
  */
-export class OpenAIProvider implements LLMProvider {
+export class OpenAIProvider
+	extends BaseLLMProvider
+	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider
+{
 	readonly name = "openai";
 
 	/**
 	 * OpenAI model prefixes that this provider supports
 	 */
-	private readonly supportedModelPrefixes = [
+	protected readonly supportedModelPrefixes = [
 		"gpt-",
 		"o1-",
 		"o3-",
@@ -35,7 +39,9 @@ export class OpenAIProvider implements LLMProvider {
 
 	private client: OpenAI | null = null;
 
-	constructor(private apiKey: string) {}
+	constructor(private apiKey: string) {
+		super();
+	}
 
 	private getClient(): OpenAI {
 		if (!this.client) {
@@ -116,21 +122,17 @@ export class OpenAIProvider implements LLMProvider {
 				error.code === "server_error" ||
 				error.code === "timeout";
 
-			const opts = {
-				message: `OpenAI API error: ${error.message}`,
-				provider: "openai",
-				model,
-				statusCode,
-				cause: error,
-			};
-			return isTransient ? new LLMTransientError(opts) : new LLMPermanentError(opts);
+			const message = `OpenAI API error: ${error.message}`;
+			return isTransient
+				? this.transientError(message, model, statusCode, error)
+				: this.permanentError(message, model, statusCode, error);
 		}
 
 		if (error instanceof LLMError) return error;
 
 		return new LLMError({
 			message: error instanceof Error ? error.message : "Unknown error",
-			provider: "openai",
+			provider: this.name,
 			model,
 			cause: error instanceof Error ? error : new Error(String(error)),
 		});
@@ -166,7 +168,7 @@ export class OpenAIProvider implements LLMProvider {
 			if (!message?.content) {
 				throw new LLMError({
 					message: "No response content from OpenAI",
-					provider: "openai",
+					provider: this.name,
 					model: request.model,
 					requestId: completion.id,
 				});
@@ -242,30 +244,10 @@ export class OpenAIProvider implements LLMProvider {
 		}
 	}
 
-	/**
-	 * Check if this provider supports a given model
-	 */
-	supportsModel(model: string): boolean {
-		return this.supportedModelPrefixes.some((prefix) => model.toLowerCase().startsWith(prefix));
-	}
-
-	supportsAttachments(
-		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
-		model: string,
-	): boolean {
+	override supportsAttachments(attachments: ProviderImageUrlAttachment[], model: string): boolean {
 		return (
 			this.supportsModel(model) &&
 			attachments.every((attachment) => attachment.type === "image_url")
 		);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	async generateImage(_request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
-		throw new LLMPermanentError({
-			message:
-				"OpenAIProvider does not support image generation. Use GeminiProvider with an imagen-* or gemini-*-image model.",
-			provider: "openai",
-			model: _request.model,
-		});
 	}
 }

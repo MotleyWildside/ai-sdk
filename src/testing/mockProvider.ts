@@ -8,6 +8,9 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMEmbeddingProvider,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "../llm-service/providers/types";
 
 export type MockProviderOptions = {
@@ -56,10 +59,12 @@ export function makeMockProvider(options: MockProviderOptions = {}): LLMProvider
 
 	const provider = {
 		name,
-		call: vi.fn(options.callImpl ?? defaultCallImpl),
-		callStream: vi.fn(options.streamImpl ?? defaultStreamImpl),
-		embed: vi.fn(options.embedImpl ?? defaultEmbedImpl),
-		embedBatch: vi.fn(options.embedBatchImpl ?? defaultEmbedBatchImpl),
+		call: vi.fn<LLMTextProvider["call"]>(options.callImpl ?? defaultCallImpl),
+		callStream: vi.fn<LLMStreamingProvider["callStream"]>(options.streamImpl ?? defaultStreamImpl),
+		embed: vi.fn<LLMEmbeddingProvider["embed"]>(options.embedImpl ?? defaultEmbedImpl),
+		embedBatch: vi.fn<LLMEmbeddingProvider["embedBatch"]>(
+			options.embedBatchImpl ?? defaultEmbedBatchImpl,
+		),
 		supportsModel: vi.fn(supportsFn),
 		supportsAttachments: vi.fn(supportsAttachmentsFn),
 	};

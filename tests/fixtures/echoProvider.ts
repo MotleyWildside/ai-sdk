@@ -1,5 +1,6 @@
 import type {
-	LLMProvider,
+	LLMEmbeddingProvider,
+	LLMImageProvider,
 	LLMProviderRequest,
 	LLMProviderResponse,
 	LLMProviderStreamResponse,
@@ -9,18 +10,17 @@ import type {
 	LLMProviderEmbedBatchResponse,
 	LLMProviderImageRequest,
 	LLMProviderImageResponse,
+	LLMStreamingProvider,
+	LLMTextProvider,
 } from "../../src/llm-service/providers/types";
+import { BaseLLMProvider } from "../../src/llm-service/providers/base";
 
-export class EchoProvider implements LLMProvider {
+export class EchoProvider
+	extends BaseLLMProvider
+	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider, LLMImageProvider
+{
 	readonly name = "echo";
-
-	supportsModel(m: string): boolean {
-		return m.startsWith("echo-");
-	}
-
-	supportsAttachments(): boolean {
-		return false;
-	}
+	protected readonly supportedModelPrefixes = ["echo-"];
 
 	async call(req: LLMProviderRequest): Promise<LLMProviderResponse> {
 		return {

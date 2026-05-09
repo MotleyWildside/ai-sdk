@@ -139,34 +139,16 @@ export interface LLMProviderImageResponse {
 	text?: string;
 }
 
+export type ProviderCapability = "text" | "stream" | "embed" | "embedBatch" | "image";
+
 /**
- * Base interface for all LLM providers
+ * Shared provider identity and model matching.
  */
-export interface LLMProvider {
+export interface ProviderIdentity {
 	/**
 	 * Provider identifier (e.g., 'openai', 'anthropic', 'google')
 	 */
 	readonly name: string;
-
-	/**
-	 * Call the provider with a normalized request
-	 */
-	call(request: LLMProviderRequest): Promise<LLMProviderResponse>;
-
-	/**
-	 * Call the provider with a streaming response
-	 */
-	callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse>;
-
-	/**
-	 * Generate vector embedding for text
-	 */
-	embed(request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse>;
-
-	/**
-	 * Generate vector embeddings for multiple texts
-	 */
-	embedBatch(request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse>;
 
 	/**
 	 * Check if this provider supports a given model
@@ -181,15 +163,65 @@ export interface LLMProvider {
 		attachments: Array<{ type: "image_url"; url: string; detail?: "auto" | "low" | "high" }>,
 		model: string,
 	): boolean;
+}
+
+export interface LLMTextProvider extends ProviderIdentity {
+	/**
+	 * Call the provider with a normalized request. Text and JSON use the same
+	 * capability; JSON is requested with `responseFormat: "json"`.
+	 */
+	call(request: LLMProviderRequest): Promise<LLMProviderResponse>;
+}
+
+export interface LLMStreamingProvider extends ProviderIdentity {
+	/**
+	 * Call the provider with a streaming response
+	 */
+	callStream(request: LLMProviderRequest): Promise<LLMProviderStreamResponse>;
+}
+
+export interface LLMEmbeddingProvider extends ProviderIdentity {
+	/**
+	 * Generate vector embedding for text
+	 */
+	embed(request: LLMProviderEmbedRequest): Promise<LLMProviderEmbedResponse>;
 
 	/**
-	 * Generate images from a text prompt. Optional — providers that don't support image
-	 * generation omit this method.
+	 * Generate vector embeddings for multiple texts
 	 */
-	generateImage?(request: LLMProviderImageRequest): Promise<LLMProviderImageResponse>;
+	embedBatch(request: LLMProviderEmbedBatchRequest): Promise<LLMProviderEmbedBatchResponse>;
+}
+
+export interface LLMImageProvider extends ProviderIdentity {
+	/**
+	 * Generate images from a text prompt.
+	 */
+	generateImage(request: LLMProviderImageRequest): Promise<LLMProviderImageResponse>;
 
 	/**
 	 * Whether this provider can generate images for the given model.
 	 */
 	supportsImageGeneration?(model: string): boolean;
 }
+
+/**
+ * Backward-compatible provider surface. Providers may implement only the
+ * capabilities they support.
+ */
+export type LLMProvider = ProviderIdentity &
+	Partial<LLMTextProvider> &
+	Partial<LLMStreamingProvider> &
+	Partial<LLMEmbeddingProvider> &
+	Partial<LLMImageProvider>;
+
+export type ProviderForOperation<TOperation extends ProviderCapability> = TOperation extends "text"
+	? ProviderIdentity & LLMTextProvider
+	: TOperation extends "stream"
+		? ProviderIdentity & LLMStreamingProvider
+		: TOperation extends "embed"
+			? ProviderIdentity & LLMEmbeddingProvider
+			: TOperation extends "embedBatch"
+				? ProviderIdentity & LLMEmbeddingProvider
+				: TOperation extends "image"
+					? ProviderIdentity & LLMImageProvider
+					: never;

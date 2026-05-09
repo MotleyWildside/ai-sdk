@@ -81,7 +81,42 @@ export type {
 	LMServiceConfig,
 } from "./llm-service/types";
 
-export type { LLMGeneratedImage } from "./llm-service/providers/types";
+export type {
+	LLMGeneratedImage,
+	LLMEmbeddingProvider,
+	LLMImageProvider,
+	LLMProvider,
+	LLMProviderEmbedBatchRequest,
+	LLMProviderEmbedBatchResponse,
+	LLMProviderEmbedRequest,
+	LLMProviderEmbedResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
+	LLMProviderRequest,
+	LLMProviderResponse,
+	LLMProviderStreamResponse,
+	LLMStreamingProvider,
+	LLMTextProvider,
+	ProviderCapability,
+	ProviderForOperation,
+	ProviderIdentity,
+} from "./llm-service/providers/types";
+
+export {
+	BaseLLMProvider,
+	BaseLLMTextProvider,
+	BaseLLMStreamingProvider,
+	BaseLLMEmbeddingProvider,
+	BaseLLMImageProvider,
+} from "./llm-service/providers/base";
+
+export type {
+	DimensionConstraints,
+	ImageDimensions,
+	ProviderErrorExtractor,
+	ProviderImageUrlAttachment,
+	ProviderPollOptions,
+} from "./llm-service/providers/base";
 
 export type { CacheConfig } from "./llm-service/cache/types";
 export type { LLMLogger } from "./logger/types";

@@ -1,7 +1,13 @@
 import { randomUUID } from "crypto";
 import { PromptRegistry } from "./prompts-registry/PromptRegistry";
 import type { PromptDefinition } from "./prompts-registry/types";
-import type { LLMMessage, LLMProvider, LLMProviderResponse } from "./providers/types";
+import type {
+	LLMMessage,
+	LLMProvider,
+	LLMProviderImageRequest,
+	LLMProviderResponse,
+	ProviderForOperation,
+} from "./providers/types";
 import type { CacheProvider } from "./cache/types";
 import { InMemoryCacheProvider } from "./cache/CacheProvider";
 import type {
@@ -43,8 +49,20 @@ import {
 // Widely-accepted balanced default; each provider's own default varies (OpenAI/Anthropic: 1.0).
 const DEFAULT_TEMPERATURE = 0.7;
 
-type ResolvedPrompt = MaterializedRegisteredPrompt & { provider: LLMProvider };
-type ResolvedRawPrompt = MaterializedRawPrompt & { provider: LLMProvider };
+type ResolvedPrompt<TOperation extends Extract<ProviderOperation, "text" | "stream">> =
+	MaterializedRegisteredPrompt & {
+		provider: ProviderForOperation<TOperation>;
+	};
+type ResolvedRawPrompt<TOperation extends Extract<ProviderOperation, "text" | "stream">> =
+	MaterializedRawPrompt & {
+		provider: ProviderForOperation<TOperation>;
+	};
+type ResolvedImagePrompt = {
+	prompt: string;
+	model: string;
+	promptId?: string;
+	promptVersion?: string | number;
+};
 
 type Messages = LLMMessage[];
 
@@ -183,21 +201,8 @@ export class LMService {
 
 		try {
 			const response = await provider.callStream(providerRequest);
-			const logger = this.logger;
 			return {
-				stream: (async function* () {
-					try {
-						yield* response.stream;
-						logOutcome(logger, ctx, { success: true, durationMs: Date.now() - ctx.startedAt });
-					} catch (error) {
-						logOutcome(logger, ctx, {
-							success: false,
-							error: errorMessage(error),
-							durationMs: Date.now() - ctx.startedAt,
-						});
-						throw error;
-					}
-				})(),
+				stream: this.wrapStreamWithLogging(response.stream, ctx),
 				traceId,
 				promptId: params.promptId,
 				promptVersion: prompt.version,
@@ -232,21 +237,8 @@ export class LMService {
 
 		try {
 			const response = await provider.callStream(providerRequest);
-			const logger = this.logger;
 			return {
-				stream: (async function* () {
-					try {
-						yield* response.stream;
-						logOutcome(logger, ctx, { success: true, durationMs: Date.now() - ctx.startedAt });
-					} catch (error) {
-						logOutcome(logger, ctx, {
-							success: false,
-							error: errorMessage(error),
-							durationMs: Date.now() - ctx.startedAt,
-						});
-						throw error;
-					}
-				})(),
+				stream: this.wrapStreamWithLogging(response.stream, ctx),
 				traceId,
 				model,
 			};
@@ -314,26 +306,7 @@ export class LMService {
 	 */
 	async generateImage(params: LLMImageParams): Promise<LLMImageResult> {
 		const traceId = params.traceId || this.generateTraceId();
-
-		let prompt: string;
-		let model: string;
-		let promptId: string | undefined;
-		let promptVersion: string | number | undefined;
-
-		if ("promptId" in params) {
-			const materialized = materializeRegisteredPrompt(
-				this.promptReg,
-				params,
-				this.config.defaultModel,
-			);
-			model = materialized.model;
-			prompt = messagesToText(materialized.messages);
-			promptId = params.promptId;
-			promptVersion = materialized.prompt.version;
-		} else {
-			prompt = params.prompt;
-			model = params.model;
-		}
+		const { prompt, model, promptId, promptVersion } = this.resolveImagePrompt(params);
 
 		const provider = selectProviderForOperation(this.providers, model, this.config, this.logger, {
 			operation: "image",
@@ -349,23 +322,7 @@ export class LMService {
 
 		try {
 			const response = await callWithRetries(
-				() =>
-					provider.generateImage!({
-						prompt,
-						model,
-						numberOfImages: params.numberOfImages,
-						aspectRatio: params.aspectRatio,
-						negativePrompt: params.negativePrompt,
-						personGeneration: params.personGeneration,
-						outputMimeType: params.outputMimeType,
-						imageSize: params.imageSize,
-						outputCompressionQuality: params.outputCompressionQuality,
-						guidanceScale: params.guidanceScale,
-						enhancePrompt: params.enhancePrompt,
-						seed: params.seed,
-						inputImages: params.inputImages,
-						signal: params.signal,
-					}),
+				() => provider.generateImage(this.buildImageProviderRequest(params, prompt, model)),
 				this.config,
 				this.logger,
 				ctx,
@@ -553,11 +510,15 @@ export class LMService {
 	 * Shared pipeline for `embed` and `embedBatch`:
 	 * select provider → call w/ retries → map → log.
 	 */
-	private async executeEmbedOp<TResp, TOut>(
+	private async executeEmbedOp<
+		TOperation extends Extract<ProviderOperation, "embed" | "embedBatch">,
+		TResp,
+		TOut,
+	>(
 		model: string,
 		traceIdParam: string | undefined,
-		operation: "embed" | "embedBatch",
-		run: (provider: LLMProvider) => Promise<TResp>,
+		operation: TOperation,
+		run: (provider: ProviderForOperation<TOperation>) => Promise<TResp>,
 		toResult: (response: TResp) => TOut,
 	): Promise<TOut> {
 		const provider = selectProviderForOperation(this.providers, model, this.config, this.logger, {
@@ -589,10 +550,12 @@ export class LMService {
 	 * Resolve prompt, model, and provider — shared by all call* methods.
 	 * Throws early with a clear message if the prompt does not exist or no model can be resolved.
 	 */
-	private resolveCall(
+	private resolveCall(params: LLMTextParams, operation: "text"): ResolvedPrompt<"text">;
+	private resolveCall(params: LLMTextParams, operation: "stream"): ResolvedPrompt<"stream">;
+	private resolveCall<TOperation extends Extract<ProviderOperation, "text" | "stream">>(
 		params: LLMTextParams,
-		operation: Extract<ProviderOperation, "text" | "stream">,
-	): ResolvedPrompt {
+		operation: TOperation,
+	): ResolvedPrompt<TOperation> {
 		const materialized = materializeRegisteredPrompt(
 			this.promptReg,
 			params,
@@ -612,13 +575,36 @@ export class LMService {
 		return { ...materialized, provider };
 	}
 
+	private resolveImagePrompt(params: LLMImageParams): ResolvedImagePrompt {
+		if ("promptId" in params) {
+			const materialized = materializeRegisteredPrompt(
+				this.promptReg,
+				params,
+				this.config.defaultModel,
+			);
+			return {
+				model: materialized.model,
+				prompt: messagesToText(materialized.messages),
+				promptId: params.promptId,
+				promptVersion: materialized.prompt.version,
+			};
+		}
+
+		return {
+			model: params.model,
+			prompt: params.prompt,
+		};
+	}
+
 	/**
 	 * Resolve messages, model, and provider for a raw (registry-free) call.
 	 */
-	private resolveRaw(
+	private resolveRaw(params: LLMTextRawParams, operation: "text"): ResolvedRawPrompt<"text">;
+	private resolveRaw(params: LLMTextRawParams, operation: "stream"): ResolvedRawPrompt<"stream">;
+	private resolveRaw<TOperation extends Extract<ProviderOperation, "text" | "stream">>(
 		params: LLMTextRawParams,
-		operation: Extract<ProviderOperation, "text" | "stream">,
-	): ResolvedRawPrompt {
+		operation: TOperation,
+	): ResolvedRawPrompt<TOperation> {
 		const materialized = materializeRawPrompt(params);
 		const provider = selectProviderForOperation(
 			this.providers,
@@ -678,6 +664,49 @@ export class LMService {
 			responseFormat,
 			signal: params.signal,
 		};
+	}
+
+	private buildImageProviderRequest(
+		params: LLMImageParams,
+		prompt: string,
+		model: string,
+	): LLMProviderImageRequest {
+		return {
+			prompt,
+			model,
+			numberOfImages: params.numberOfImages,
+			aspectRatio: params.aspectRatio,
+			negativePrompt: params.negativePrompt,
+			personGeneration: params.personGeneration,
+			outputMimeType: params.outputMimeType,
+			imageSize: params.imageSize,
+			outputCompressionQuality: params.outputCompressionQuality,
+			guidanceScale: params.guidanceScale,
+			enhancePrompt: params.enhancePrompt,
+			seed: params.seed,
+			inputImages: params.inputImages,
+			signal: params.signal,
+		};
+	}
+
+	private wrapStreamWithLogging(
+		stream: LLMStreamResult["stream"],
+		ctx: CallContext,
+	): LLMStreamResult["stream"] {
+		const logger = this.logger;
+		return (async function* () {
+			try {
+				yield* stream;
+				logOutcome(logger, ctx, { success: true, durationMs: Date.now() - ctx.startedAt });
+			} catch (error) {
+				logOutcome(logger, ctx, {
+					success: false,
+					error: errorMessage(error),
+					durationMs: Date.now() - ctx.startedAt,
+				});
+				throw error;
+			}
+		})();
 	}
 
 	/**
