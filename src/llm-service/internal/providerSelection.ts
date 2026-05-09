@@ -75,6 +75,12 @@ export function selectProvider(
 /**
  * Resolve a provider and assert the operation-specific capability needed before
  * building the provider request.
+ *
+ * Selection order:
+ * 1. `config.defaultProvider` if registered (warn + fall back if not found).
+ * 2. First registered provider whose `supportsModel` AND `hasOperationCapability` both match.
+ * 3. If model matches exist but none have the capability, throw a capability error.
+ * 4. If no model matches: throw (strict) or warn + fall back to first provider (non-strict).
  */
 export function selectProviderForOperation<TOperation extends ProviderOperation>(
 	providers: Map<string, LLMProvider>,
@@ -83,9 +89,50 @@ export function selectProviderForOperation<TOperation extends ProviderOperation>
 	logger: LLMLogger | null,
 	options: ProviderOperationOptions & { operation: TOperation },
 ): ProviderForOperation<TOperation> {
-	const provider = selectProviderWithCapability(providers, model, config, logger, options);
-	assertProviderCapability(provider, model, options);
-	return provider;
+	if (config.defaultProvider) {
+		const provider = providers.get(config.defaultProvider);
+		if (provider) {
+			assertProviderCapability(provider, model, options);
+			return provider as ProviderForOperation<TOperation>;
+		}
+
+		logger?.warn(
+			`Default provider "${config.defaultProvider}" not found — falling back to auto-select`,
+			{ model },
+		);
+	}
+
+	const modelMatches = Array.from(providers.values()).filter((provider) =>
+		provider.supportsModel(model),
+	);
+
+	for (const provider of modelMatches) {
+		if (hasOperationCapability(provider, model, options.operation)) {
+			assertProviderCapability(provider, model, options);
+			return provider as ProviderForOperation<TOperation>;
+		}
+	}
+
+	if (modelMatches.length > 0) {
+		throw missingCapabilityError(modelMatches, model, options);
+	}
+
+	if (config.strictProviderSelection !== false) {
+		throw new Error(`No registered provider supports model "${model}"`);
+	}
+
+	const firstProvider = Array.from(providers.values())[0];
+	if (!firstProvider) {
+		throw new Error("No LLM providers available");
+	}
+
+	logger?.warn(
+		`No provider claimed model "${model}" — falling back to first registered provider "${firstProvider.name}"`,
+		{ model },
+	);
+
+	assertProviderCapability(firstProvider, model, options);
+	return firstProvider as ProviderForOperation<TOperation>;
 }
 
 export function isTextProvider(
@@ -128,54 +175,6 @@ export function assertProviderCapability(
 			promptId: options.promptId,
 		});
 	}
-}
-
-function selectProviderWithCapability<TOperation extends ProviderOperation>(
-	providers: Map<string, LLMProvider>,
-	model: string,
-	config: LMServiceConfig,
-	logger: LLMLogger | null,
-	options: ProviderOperationOptions & { operation: TOperation },
-): ProviderForOperation<TOperation> {
-	if (config.defaultProvider) {
-		const provider = providers.get(config.defaultProvider);
-		if (provider) return provider as ProviderForOperation<TOperation>;
-
-		logger?.warn(
-			`Default provider "${config.defaultProvider}" not found — falling back to auto-select`,
-			{ model },
-		);
-	}
-
-	const modelMatches = Array.from(providers.values()).filter((provider) =>
-		provider.supportsModel(model),
-	);
-
-	for (const provider of modelMatches) {
-		if (hasOperationCapability(provider, model, options.operation)) {
-			return provider as ProviderForOperation<TOperation>;
-		}
-	}
-
-	if (modelMatches.length > 0) {
-		throw missingCapabilityError(modelMatches, model, options);
-	}
-
-	if (config.strictProviderSelection !== false) {
-		throw new Error(`No registered provider supports model "${model}"`);
-	}
-
-	const firstProvider = Array.from(providers.values())[0];
-	if (!firstProvider) {
-		throw new Error("No LLM providers available");
-	}
-
-	logger?.warn(
-		`No provider claimed model "${model}" — falling back to first registered provider "${firstProvider.name}"`,
-		{ model },
-	);
-
-	return firstProvider as ProviderForOperation<TOperation>;
 }
 
 function hasOperationCapability(

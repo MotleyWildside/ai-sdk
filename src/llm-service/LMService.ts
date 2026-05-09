@@ -34,7 +34,7 @@ import { CallContext, logOutcome, errorMessage } from "./internal/logContext";
 import { callWithRetries } from "./internal/retry";
 import { buildCacheKey } from "./internal/cacheKey";
 import { selectProviderForOperation, type ProviderOperation } from "./internal/providerSelection";
-import { parseAndRepairJSON, validateSchema, enforceJsonInstruction } from "./internal/jsonHelpers";
+import { processJsonResponse, enforceJsonInstruction } from "./internal/jsonHelpers";
 import {
 	attachToUserMessage,
 	materializeRawPrompt,
@@ -131,23 +131,14 @@ export class LMService {
 			},
 			prepareMessages: enforceJsonInstruction,
 			mapResponse: (response, base, { prompt, providerName }) => {
-				const parsed = parseAndRepairJSON<T>(
-					response.text,
-					providerName,
-					base.model,
-					params.promptId,
-					response.requestId,
-				);
 				const schema = params.jsonSchema || prompt.output.schema;
-				const validated = validateSchema<T>(
-					parsed,
-					schema,
-					providerName,
-					base.model,
-					params.promptId,
-					response.requestId,
-				);
-				return { ...base, data: validated };
+				const data = processJsonResponse<T>(response.text, schema, {
+					provider: providerName,
+					model: base.model,
+					promptId: params.promptId,
+					requestId: response.requestId,
+				});
+				return { ...base, data };
 			},
 		});
 	}
@@ -160,20 +151,12 @@ export class LMService {
 			responseFormat: "json",
 			prepareMessages: enforceJsonInstruction,
 			mapResponse: (response, base, { providerName }) => {
-				const parsed = parseAndRepairJSON<T>(
-					response.text,
-					providerName,
-					base.model,
-					response.requestId,
-				);
-				const validated = validateSchema<T>(
-					parsed,
-					params.jsonSchema,
-					providerName,
-					base.model,
-					response.requestId,
-				);
-				return { ...base, data: validated };
+				const data = processJsonResponse<T>(response.text, params.jsonSchema, {
+					provider: providerName,
+					model: base.model,
+					requestId: response.requestId,
+				});
+				return { ...base, data };
 			},
 		});
 	}

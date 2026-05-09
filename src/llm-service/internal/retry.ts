@@ -18,7 +18,13 @@ export interface RetryLogContext {
 }
 
 /**
- * Call a provider fn with exponential backoff retries.
+ * Transport-layer retry: retries a single provider call on `LLMTransientError`.
+ * This runs *inside* a pipeline step, before the step returns an outcome.
+ * It is distinct from `RetryPolicy` (orchestrator/policies/RetryPolicy.ts), which
+ * retries entire steps at the pipeline level based on step outcomes.
+ * The two layers compose: a provider call may retry here N times before the step
+ * fails, and then the pipeline policy may retry the step M times on top.
+ *
  * Only retries on `LLMTransientError`; all other errors propagate immediately.
  * `maxAttempts` is the total number of attempts (1 = no retries).
  */

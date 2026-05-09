@@ -27,7 +27,12 @@ export type RetryPolicyOptions = {
 const defaultBackoff = (attempt: number) => Math.min(100 * 2 ** (attempt - 1), 30_000);
 
 /**
- * Drop-in policy that retries failed steps with configurable back-off.
+ * Step-level retry: retries whole pipeline steps on failed outcomes.
+ * This is distinct from `callWithRetries` (llm-service/internal/retry.ts), which
+ * retries individual provider calls at the transport layer inside a step.
+ * The two layers compose independently: the transport layer retries transient
+ * provider errors N times before the step fails; this policy retries the entire
+ * step M times on top if the outcome is still `failed`.
  *
  * Usage:
  * ```ts

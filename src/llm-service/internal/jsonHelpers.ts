@@ -1,6 +1,27 @@
 import { z } from "zod";
 import { LLMParseError, LLMSchemaError } from "../errors";
 
+export type JsonResponseContext = {
+	provider: string;
+	model: string;
+	promptId?: string;
+	requestId?: string;
+};
+
+/**
+ * Parse, repair, and validate a provider's JSON text response in one call.
+ * Combines `parseAndRepairJSON` + `validateSchema` so call sites don't have to
+ * thread the error context through two sequential calls.
+ */
+export function processJsonResponse<T>(
+	text: string,
+	schema: z.ZodSchema<T> | undefined,
+	ctx: JsonResponseContext,
+): T {
+	const parsed = parseAndRepairJSON<T>(text, ctx.provider, ctx.model, ctx.promptId, ctx.requestId);
+	return validateSchema<T>(parsed, schema, ctx.provider, ctx.model, ctx.promptId, ctx.requestId);
+}
+
 /**
  * Parse raw text as JSON; attempt a repair pass on failure.
  * Throws `LLMParseError` when both the initial parse and the repair fail.

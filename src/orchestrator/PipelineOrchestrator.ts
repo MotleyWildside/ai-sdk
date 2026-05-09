@@ -10,20 +10,47 @@ import type {
 	PipelineRunOptions,
 	BaseContext,
 } from "./types";
-import { PipelineDefinitionError, PipelineAbortedError } from "./errors";
+import { PipelineDefinitionError, PipelineAbortedError, StepExecutionError } from "./errors";
 import { NoopPipelineObserver, type PipelineObserver } from "./observers";
 import { getTraceId } from "./utils";
 import { PIPELINE_STATUS, DEFAULT_MAX_TRANSITIONS } from "./constants";
 import { DefaultPolicy } from "./policies/DefaultPolicy";
 import { logger } from "../logger/logger";
 import { TransitionRuntime } from "./internal/transitionRuntime";
-import {
-	classifyRunFailure,
-	classifyStepException,
-	failedRunResult,
-	shouldPropagateRunFailure,
-	toError,
-} from "./internal/failureClassifier";
+
+function toError(error: unknown): Error {
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+function classifyStepException(error: unknown): StepOutcome {
+	return { type: "failed", error: toError(error), retryable: false };
+}
+
+function classifyRunFailure(params: {
+	error: unknown;
+	traceId: string;
+}): StepExecutionError | PipelineAbortedError {
+	const { error, traceId } = params;
+	if (error instanceof PipelineAbortedError) return error;
+	return new StepExecutionError(
+		`Unexpected error during pipeline execution: ${toError(error).message}`,
+		traceId,
+		undefined,
+		500,
+		error,
+	);
+}
+
+function shouldPropagateRunFailure(error: unknown): error is PipelineDefinitionError {
+	return error instanceof PipelineDefinitionError;
+}
+
+function failedRunResult<C extends BaseContext>(
+	ctx: C,
+	error: StepExecutionError | PipelineAbortedError,
+): PipelineRunResult<C> {
+	return { status: PIPELINE_STATUS.FAILED, ctx, error };
+}
 
 export class PipelineOrchestrator<C extends BaseContext> {
 	private readonly stepsByName: Map<string, PipelineStep<C>>;
