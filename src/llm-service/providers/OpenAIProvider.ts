@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { LLMError } from "../errors";
 import type {
 	LLMEmbeddingProvider,
+	LLMImageProvider,
 	LLMProviderRequest,
 	LLMProviderResponse,
 	LLMProviderStreamResponse,
@@ -9,6 +10,8 @@ import type {
 	LLMProviderEmbedResponse,
 	LLMProviderEmbedBatchRequest,
 	LLMProviderEmbedBatchResponse,
+	LLMProviderImageRequest,
+	LLMProviderImageResponse,
 	LLMStreamingProvider,
 	LLMTextProvider,
 } from "./types";
@@ -19,13 +22,10 @@ import { BaseLLMProvider, type ProviderImageUrlAttachment } from "./base";
  */
 export class OpenAIProvider
 	extends BaseLLMProvider
-	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider
+	implements LLMTextProvider, LLMStreamingProvider, LLMEmbeddingProvider, LLMImageProvider
 {
 	readonly name = "openai";
 
-	/**
-	 * OpenAI model prefixes that this provider supports
-	 */
 	protected readonly supportedModelPrefixes = [
 		"gpt-",
 		"o1-",
@@ -35,6 +35,7 @@ export class OpenAIProvider
 		"text-embedding-ada-",
 		"davinci-",
 		"babbage-",
+		"dall-e-",
 	];
 
 	private client: OpenAI | null = null;
@@ -229,6 +230,105 @@ export class OpenAIProvider
 		} catch (error) {
 			throw this.wrapError(error, request.model);
 		}
+	}
+
+	supportsImageGeneration(model: string): boolean {
+		return model.toLowerCase().startsWith("dall-e-");
+	}
+
+	async generateImage(request: LLMProviderImageRequest): Promise<LLMProviderImageResponse> {
+		try {
+			const client = this.getClient();
+			if (request.model.toLowerCase().startsWith("dall-e-3")) {
+				return this.generateViaDalle3(client, request);
+			}
+			return this.generateViaDalle2(client, request);
+		} catch (error) {
+			throw this.wrapError(error, request.model);
+		}
+	}
+
+	private async generateViaDalle3(
+		client: OpenAI,
+		request: LLMProviderImageRequest,
+	): Promise<LLMProviderImageResponse> {
+		if (request.aspectRatio && !["1:1", "9:16", "16:9"].includes(request.aspectRatio)) {
+			throw this.permanentError(
+				`DALL-E 3 does not support aspectRatio="${request.aspectRatio}". Supported: 1:1, 9:16, 16:9.`,
+				request.model,
+			);
+		}
+		if (request.numberOfImages !== undefined && request.numberOfImages > 1) {
+			throw this.permanentError("DALL-E 3 supports only 1 image per request.", request.model);
+		}
+
+		const response = await client.images.generate(
+			{
+				model: request.model,
+				prompt: request.prompt,
+				n: 1,
+				size: this.toDalle3Size(request.aspectRatio),
+				response_format: "b64_json",
+			},
+			{ signal: request.signal },
+		);
+
+		const images = (response.data ?? []).map((img) => ({
+			data: img.b64_json ?? "",
+			mimeType: "image/png" as const,
+		}));
+		const revisedPrompt = response.data?.[0]?.revised_prompt;
+		return { images, raw: response, text: revisedPrompt ?? undefined };
+	}
+
+	private async generateViaDalle2(
+		client: OpenAI,
+		request: LLMProviderImageRequest,
+	): Promise<LLMProviderImageResponse> {
+		if (request.aspectRatio && request.aspectRatio !== "1:1") {
+			throw this.permanentError(
+				`DALL-E 2 only supports 1:1 aspect ratio. Received: "${request.aspectRatio}".`,
+				request.model,
+			);
+		}
+		if (request.imageSize && !["0.5K", "1K"].includes(request.imageSize)) {
+			throw this.permanentError(
+				`DALL-E 2 does not support imageSize="${request.imageSize}". Supported: 0.5K (512×512), 1K (1024×1024).`,
+				request.model,
+			);
+		}
+
+		const response = await client.images.generate(
+			{
+				model: request.model,
+				prompt: request.prompt,
+				n: request.numberOfImages ?? 1,
+				size: this.toDalle2Size(request.imageSize),
+				response_format: "b64_json",
+			},
+			{ signal: request.signal },
+		);
+
+		const images = (response.data ?? []).map((img) => ({
+			data: img.b64_json ?? "",
+			mimeType: "image/png" as const,
+		}));
+		return { images, raw: response };
+	}
+
+	private toDalle3Size(
+		aspectRatio?: LLMProviderImageRequest["aspectRatio"],
+	): "1024x1024" | "1024x1792" | "1792x1024" {
+		if (aspectRatio === "9:16") return "1024x1792";
+		if (aspectRatio === "16:9") return "1792x1024";
+		return "1024x1024";
+	}
+
+	private toDalle2Size(
+		imageSize?: LLMProviderImageRequest["imageSize"],
+	): "256x256" | "512x512" | "1024x1024" {
+		if (imageSize === "0.5K") return "512x512";
+		return "1024x1024";
 	}
 
 	override supportsAttachments(attachments: ProviderImageUrlAttachment[], model: string): boolean {
