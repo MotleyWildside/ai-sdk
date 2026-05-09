@@ -32,6 +32,23 @@ The codebase has two independent subsystems that share only the logger and are c
 
 `LMService` is a thin orchestration layer over pluggable `LLMProvider` adapters (OpenAI, Gemini, OpenRouter). Key design choices:
 
+#### Provider capabilities at a glance
+
+| Provider | text | stream | embed | image |
+|---|---|---|---|---|
+| `OpenAIProvider` | ✓ | ✓ | ✓ | ✓ DALL-E 2/3 (`dall-e-*`) |
+| `GeminiProvider` | ✓ | ✓ | ✓ | ✓ Imagen (`imagen-*`) + Gemini image (`gemini-*-image`) |
+| `OpenRouterProvider` | ✓ | ✓ | — | — |
+
+**DALL-E specifics** (`OpenAIProvider`):
+- DALL-E 3: use `aspectRatio` to select size (`1:1` → 1024×1024, `16:9` → 1792×1024, `9:16` → 1024×1792); `3:4`/`4:3` throw `LLMPermanentError`. `numberOfImages` must be 1.
+- DALL-E 2: use `imageSize` (`"0.5K"` → 512×512, `"1K"` → 1024×1024); `"2K"`/`"4K"` throw `LLMPermanentError`. Only `1:1` aspect ratio supported.
+- Both models always return `image/png` base64 (`response_format: "b64_json"` — no URL fetch needed).
+- Parameters with no DALL-E equivalent (`negativePrompt`, `seed`, `guidanceScale`, `enhancePrompt`, `personGeneration`) are silently ignored.
+- DALL-E 3 surfaces the model's revised prompt in `LLMProviderImageResponse.text`.
+
+
+
 - **Provider selection** ([LMService.ts:65](src/llm-service/LMService.ts#L65)): if `config.defaultProvider` is set, it's used unconditionally (with a warning+fallback if the name doesn't resolve). Otherwise providers are probed via `supportsModel(model)`, falling back to the first registered provider. Providers match by model-name prefix (see `supportedModelPrefixes` in each provider).
 - **Retry policy** ([LMService.ts:585](src/llm-service/LMService.ts#L585)): exponential backoff is applied **only** to `LLMTransientError`. Any other error — including `LLMPermanentError`, `LLMParseError`, `LLMSchemaError` — propagates immediately. Streaming (`callStream`) bypasses retries entirely; reconnection is the caller's responsibility.
 - **JSON path** (`callJSON`): appends an explicit "return ONLY valid JSON" instruction to the last user message if one isn't already present, then parses. On parse failure it runs `repairJSON` (strips markdown fences, extracts the first `{...}` block) before throwing `LLMParseError`. Zod validation runs after parsing and throws `LLMSchemaError` on failure.
